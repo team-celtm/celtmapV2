@@ -1,0 +1,364 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #f8faff;
+    --on-background: #111827;
+    --surface: #ffffff;
+    --on-surface: #111827;
+    --surface-variant: #f3f4f6;
+    --on-surface-variant: #4b5563;
+    
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #f9fafb;
+    --surface-container: #f3f4f6;
+    --surface-container-high: #e5e7eb;
+    --surface-container-highest: #d1d5db;
+    --surface-bright: #ffffff;
+    --surface-dim: #e5e7eb;
+    
+    --outline: #9ca3af;
+    --outline-variant: #d1d5db;
+
+    /* Google Playful Colors */
+    --primary: #4285F4; /* Google Blue */
+    --on-primary: #ffffff;
+    --primary-dim: #1a73e8;
+    --primary-container: #d2e3fc;
+    --on-primary-container: #174ea6;
+    
+    --secondary: #EA4335; /* Google Red */
+    --on-secondary: #ffffff;
+    --secondary-dim: #d93025;
+    --secondary-container: #fce8e6;
+    --on-secondary-container: #a50e0e;
+    
+    --tertiary: #FBBC05; /* Google Yellow */
+    --on-tertiary: #202124;
+    --tertiary-dim: #f9ab00;
+    --tertiary-container: #fef7e0;
+    --on-tertiary-container: #e37400;
+
+    --success: #34A853; /* Google Green */
+    --on-success: #ffffff;
+
+    --error: #ea4335;
+    --on-error: #ffffff;
+    --error-container: #fce8e6;
+    --on-error-container: #c5221f;
+  }
+
+  .dark {
+    --background: #000000;
+    --surface: #000000;
+    --surface-container-lowest: #020202;
+    --surface-container-low: #050505;
+    --surface-container: #080808;
+    --surface-container-high: #0b0b0b;
+    --surface-container-highest: #111111;
+    --surface-variant: #181818;
+    --surface-bright: #1c1c1c;
+    --surface-dim: #000000;
+    --on-background: #eeeeee;
+    --on-surface: #eeeeee;
+    --on-surface-variant: #94a3b8;
+    --inverse-surface: #eeeeee;
+    --inverse-on-surface: #0a0a0a;
+    --primary: #818cf8;
+    --primary-dim: #6366f1;
+    --on-primary: #ffffff;
+    --primary-container: #312e81;
+    --on-primary-container: #e0e7ff;
+    --inverse-primary: #4338ca;
+    --secondary: #94a3b8;
+    --secondary-dim: #64748b;
+    --on-secondary: #0f172a;
+    --secondary-container: #1e293b;
+    --on-secondary-container: #f1f5f9;
+    --tertiary: #c084fc;
+    --tertiary-dim: #a855f7;
+    --on-tertiary: #ffffff;
+    --tertiary-container: #581c87;
+    --on-tertiary-container: #f5f3ff;
+    --error: #f87171;
+    --on-error: #ffffff;
+    --error-container: #7f1d1d;
+    --on-error-container: #fee2e2;
+    --outline: transparent;
+    --outline-variant: transparent;
+  }
+}
+
+@layer components {
+    .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(8px); /* Reduced from 25px for better FPS */
+        -webkit-backdrop-filter: blur(8px);
+    }
+    .dark .glass-card {
+        background: rgba(19, 19, 19, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+    .glow-tail { filter: drop-shadow(0 0 5px rgba(159, 167, 255, 0.4)); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .lift-card {
+        transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.25s ease, background-color 0.25s ease;
+        will-change: transform;
+    }
+    .lift-card:hover {
+        transform: translateY(-4px);
+    }
+    .lift-tile {
+        transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), border-color 0.2s ease, background-color 0.2s ease;
+        will-change: transform;
+    }
+    .lift-tile:hover {
+        transform: translateY(-2px);
+    }
+}
+
+html { font-size: 75% !important; scroll-behavior: smooth; }
+body { 
+    font-family: var(--font-manrope), sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.clay-surface, .clay-card {
+    background: #ffffff;
+    box-shadow: 0 10px 30px rgba(66, 133, 244, 0.05); /* Simplified from multi-layer for FPS */
+    backdrop-filter: blur(8px);
+    border-radius: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease-out;
+    will-change: transform;
+    content-visibility: auto; /* Optimization for complex cards */
+}
+
+.clay-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(66, 133, 244, 0.1);
+}
+
+.holographic-grid {
+    background-image: linear-gradient(rgba(173, 198, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(173, 198, 255, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    mask-image: radial-gradient(circle, black, transparent);
+}
+
+.celtm-orb-glow {
+    box-shadow: 0 0 120px 40px rgba(173, 198, 255, 0.2), inset 0 0 60px rgba(220, 184, 255, 0.3);
+}
+
+.dark .clay-surface, .dark .clay-card {
+    background: linear-gradient(145deg, #201f1f, #131313);
+    box-shadow: 8px 8px 24px #0a0a0a, -2px -2px 8px rgba(255,255,255,0.02), inset 1px 1px 2px rgba(255,255,255,0.05);
+    border: none;
+    border-radius: 2rem;
+}
+
+.dark .clay-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 12px 12px 32px #0a0a0a, -2px -2px 12px rgba(255,255,255,0.03), inset 1px 1px 2px rgba(255,255,255,0.05);
+    border: none;
+}
+
+/* ══════ Custom Scrollbars ══════ */
+/* Webkit (Chrome, Safari, Edge) */
+*::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.18);
+    border-radius: 100px;
+    border: 1px solid transparent;
+    background-clip: content-box;
+    transition: background 0.3s;
+}
+*::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.35);
+}
+*::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Dark mode scrollbar */
+.dark *::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+}
+.dark *::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.18) transparent;
+}
+.dark * {
+    scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+/* ══════ Premium Interactions ══════ */
+
+/* Haptic Push Effect */
+.clay-haptic {
+  transition: transform 0.2s cubic-bezier(0.33, 1, 0.68, 1), box-shadow 0.2s ease;
+}
+.clay-haptic:active {
+  transform: scale(0.96) translateY(1px) !important;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.1), inset 1px 1px 2px rgba(0,0,0,0.05) !important;
+}
+
+/* Page Entry Animation */
+.page-fade-in {
+  animation: pageEnter 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(10px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+/* Assessment Scanning Focus */
+.scanning-focus-border {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanning-focus-border::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(from 0deg, transparent 0%, var(--primary) 10%, transparent 20%);
+  animation: scanning 8s linear infinite;
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes scanning {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Shimmer Reveal */
+.shimmer-reveal {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-reveal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  transform: translateX(-100%);
+  animation: shimmerMove 3s infinite;
+}
+
+@keyframes shimmerMove {
+  100% { transform: translateX(100%); }
+}
+
+/* CELTM Glow */
+.node-glow {
+  filter: drop-shadow(0 0 8px var(--primary));
+  animation: nodePulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes nodePulse {
+  from { opacity: 0.8; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1.05); }
+}
+
+/* 3D Tilt Effect Container */
+.tilt-card-container {
+  perspective: 1000px;
+}
+.tilt-card {
+  transition: transform 0.15s ease-out;
+  transform-style: preserve-3d;
+}
+.tilt-card:hover {
+  /* Dynamic transform will be applied via JS inline style */
+}
+
+/* Biometric Scan */
+.biometric-scanner {
+  position: relative;
+  overflow: hidden;
+}
+.biometric-scanner::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #6366f1, transparent);
+  box-shadow: 0 0 15px #6366f1;
+  animation: scanLine 2s ease-in-out infinite;
+  z-index: 10;
+}
+
+@keyframes scanLine {
+  0% { top: 0; opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* CELTM Wave Pulse */
+.celtm-wave {
+  animation: wavePulse 4s ease-in-out infinite;
+}
+
+@keyframes wavePulse {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.1); opacity: 0.5; }
+}
+
+/* Terminal Log Entry */
+.terminal-log-entry {
+  animation: logSlideIn 0.3s ease-out forwards;
+}
+
+@keyframes logSlideIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Custom Scrollbar Utility */
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: rgba(123, 114, 242, 0.2);
+  border-radius: 10px;
+}
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(123, 114, 242, 0.4);
+}
+
+/* For Firefox */
+.custom-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(123, 114, 242, 0.2) transparent;
+}
+

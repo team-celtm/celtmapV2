@@ -1,0 +1,91 @@
+
+import type { Config } from "tailwindcss";
+
+export default {
+  content: [
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "tertiary-fixed": "var(--tertiary-fixed)",
+        "primary-dim": "var(--primary-dim)",
+        "on-surface-variant": "var(--on-surface-variant)",
+        "surface-tint": "var(--surface-tint)",
+        "surface-container-lowest": "var(--surface-container-lowest)",
+        "outline": "var(--outline)",
+        "on-tertiary-fixed": "var(--on-tertiary-fixed)",
+        "on-surface": "var(--on-surface)",
+        "error-dim": "var(--error-dim)",
+        "on-secondary-container": "var(--on-secondary-container)",
+        "surface-variant": "var(--surface-variant)",
+        "on-primary-fixed": "var(--on-primary-fixed)",
+        "inverse-primary": "var(--inverse-primary)",
+        "tertiary-container": "var(--tertiary-container)",
+        "on-primary": "var(--on-primary)",
+        "error-container": "var(--error-container)",
+        "on-error-container": "var(--on-error-container)",
+        "on-secondary": "var(--on-secondary)",
+        "secondary-fixed-dim": "var(--secondary-fixed-dim)",
+        "secondary": "var(--secondary)",
+        "primary": "var(--primary)",
+        "on-tertiary-container": "var(--on-tertiary-container)",
+        "error": "var(--error)",
+        "on-secondary-fixed": "var(--on-secondary-fixed)",
+        "background": "var(--background)",
+        "secondary-container": "var(--secondary-container)",
+        "on-primary-container": "var(--on-primary-container)",
+        "surface-dim": "var(--surface-dim)",
+        "primary-fixed-dim": "var(--primary-fixed-dim)",
+        "inverse-surface": "var(--inverse-surface)",
+        "tertiary": "var(--tertiary)",
+        "primary-container": "var(--primary-container)",
+        "surface": "var(--surface)",
+        "inverse-on-surface": "var(--inverse-on-surface)",
+        "surface-container-low": "var(--surface-container-low)",
+        "surface-container-high": "var(--surface-container-high)",
+        "on-background": "var(--on-background)",
+        "tertiary-dim": "var(--tertiary-dim)",
+        "primary-fixed": "var(--primary-fixed)",
+        "on-tertiary-fixed-variant": "var(--on-tertiary-fixed-variant)",
+        "secondary-fixed": "var(--secondary-fixed)",
+        "surface-container": "var(--surface-container)",
+        "on-tertiary": "var(--on-tertiary)",
+        "tertiary-fixed-dim": "var(--tertiary-fixed-dim)",
+        "secondary-dim": "var(--secondary-dim)",
+        "surface-bright": "var(--surface-bright)",
+        "outline-variant": "var(--outline-variant)",
+        "on-secondary-fixed-variant": "var(--on-secondary-fixed-variant)",
+        "on-primary-fixed-variant": "var(--on-primary-fixed-variant)",
+        "on-error": "var(--on-error)",
+        "surface-container-highest": "var(--surface-container-highest)",
+        "google-blue": "#4285F4",
+        "google-red": "#EA4335",
+        "google-yellow": "#FBBC05",
+        "google-green": "#34A853",
+      },
+      borderRadius: {
+        "DEFAULT": "1rem",
+        "lg": "2rem",
+        "xl": "3rem",
+        "full": "9999px"
+      },
+      keyframes: {
+        "intelligence-pulse": {
+          "0%, 100%": { transform: "scale(1)", opacity: "0.8", filter: "brightness(1)" },
+          "50%": { transform: "scale(1.03)", opacity: "1", filter: "brightness(1.2)" },
+        }
+      },
+      animation: {
+        "intelligence-pulse": "intelligence-pulse 4s cubic-bezier(0.25, 0.1, 0.25, 1) infinite",
+      }
+    },
+  },
+  plugins: [
+    require("@tailwindcss/forms"),
+    require("@tailwindcss/container-queries"),
+  ],
+} satisfies Config;

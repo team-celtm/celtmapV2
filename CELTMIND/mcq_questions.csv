@@ -1,0 +1,250 @@
+question_id,option_a,option_b,option_c,option_d,correct_option
+0011c7db-20a8-441e-bdce-82caf0b52da5,A type of keyboard,A program in execution,A network cable,A database row,B
+036d86e9-ee2a-455d-8834-fd4e466944cc,40 km/h,50 km/h,60 km/h,70 km/h,C
+04d2b465-5229-472c-9d50-e5a37c1a2d5d,3/4,4/5,3/5,5/3,C
+061e1173-0153-4b99-a330-0dcfcab097dd,Inheritance,Abstraction,Serialization,Iteration,B
+078d62f4-d3c7-4068-b9a6-0576ceb47368,2,3,4,5,C
+07eebb20-aa84-4824-862b-e9373951be3e,Single point of failure,Redundancy,Manual scaling only,Removing backups,B
+0934386e-34c3-4824-8c1a-d38d109ac9c5,Because training data is always wrong,Because the model may overfit and fail on new data,Because more data is never useful,Because evaluation is unnecessary,B
+0b71110e-ec88-4267-a1c7-f6a5706d7819,To make charts colorful,To improve data quality and reliability,To remove all data,To avoid any calculations,B
+0c1c07e5-37e6-466e-b589-78d4302d4b85,Only a value,A value and a pointer to the next node,Only an index,A full array,B
+121352b2-43bb-47fa-ad62-4428f103feb2,Mode,Mean,Index,Range,B
+12f7a356-3839-40f3-8826-114b72a355fe,Conduction,Convection,Radiation,Insulation,C
+17bd982a-3f4d-41ef-9758-19506b94e83f,Storing many values of the same type,Printing graphics only,Connecting to the internet,Encrypting passwords,A
+17f08f9f-ce83-494c-9d2d-f2ec98ee3020,Proton,Neutron,Electron,Nucleus,C
+18a41f8d-ea30-46a6-9f4a-5a329c454ddc,She go to office daily,She goes to office daily,She going to office daily,She gone to office daily,B
+1bef1a07-4f7f-495e-8afb-512ca87bd3c0,Atomic radius only,Electronegativity only,Metallic character only,Atomic size only,B
+20af518e-9ebf-4ee4-b11e-7c3c944f2c1d,A raw unprocessed row of data,A meaningful conclusion drawn from data,A random number,A chart color choice,B
+224bc452-18eb-4a7a-a045-21788a28fa40,Permanent hardware ownership,Automatic adjustment of resources to match demand,Manual coding style correction,Database normalization,B
+22f6be61-e89b-4cba-b2be-7809b3feca21,grow,increase,shrink,extend,C
+23afe8cc-06fc-40fc-9010-5d02d08106a2,Deleting all old data,Ability to handle changing workload by adjusting resources,Running only one user at a time,Removing backups,B
+24395ef9-128e-4e8f-84fb-37520702bb4f,To make decisions based on evidence,To replace all managers,To avoid measurement,To remove customer feedback,A
+253fc2bf-229a-4f64-a38f-5a560ca49ef2,Only storing spreadsheets,Packaging an application and its dependencies consistently,Replacing all networks,Designing UI screens,B
+2716afeb-4240-4c16-9874-eca50817ad3a,Pie chart,Line chart,Scatter chart only,Tree diagram,B
+2785c1be-ca0c-4557-897a-a0a59240bd5d,90,180,270,360,B
+2bfdb9ce-4ef6-432c-838f-f4592a7c5ae2,Making all data public,Hiding internal details and controlling access,Replacing all functions,Removing objects entirely,B
+2e2bf43a-abfd-4326-ad15-df9be3517420,3,4,5,6,B
+2ed68cb5-a1c1-4d50-8d43-fe7d95ed00e9,float,string,int,boolean,C
+342488e2-9003-4988-a12a-6ba62a18e569,A model that learns useful patterns and generalizes well,A model that memorizes training data too closely and performs poorly on new data,A model that uses no features,A model that never trains,B
+3450ae40-5ff0-4b17-adeb-ab7ee9857e8e,System testing,Acceptance testing,Unit testing,Maintenance testing,C
+35bf9934-d8b9-4b83-8f6f-ff62cec2a23e,6 m,12 m,18 m,24 m,C
+3ad68b17-8f62-4ee0-b2f2-7b2af82079b1,The system shall allow login,The system shall generate reports,The system shall respond within 2 seconds,The system shall let users update profiles,C
+3bdc533d-1f6c-46f2-b449-f2d5235fbb14,Alkane,Alkene,Alkyne,Aromatic,A
+3dc74bb2-55ce-4a5f-abb5-e8c15de92242,It removes the need for goals,It determines how clearly the problem can be explored and solved,It only affects screen color,It replaces reasoning entirely,B
+3e5e9625-2bc8-48ff-bf99-7420315951da,9,10,11,12,B
+3e9f2800-611d-4c63-a684-cd4ccba47e1b,A keyboard failure,An error in source code,A situation where required memory page is not in main memory,A corrupted folder,C
+3ebdcc9f-60b0-4583-b147-715153e02396,Noun,Verb,Adverb,Preposition,C
+3f1a475f-595f-4cb3-94fd-9cb57a776121,1 mole,2 moles,3 moles,4 moles,B
+3f476ca4-c123-473b-8a15-373700d69dcf,6x + 2,3x + 2,6x + 1,2x + 2,A
+3f9ba2b8-687a-4af7-b820-03a1a51c5521,Inheritance only,Polymorphism,Encapsulation,Compilation,B
+43ec146d-95e9-4224-ad56-f2379f0e68a3,UDP,IP,TCP,DNS,C
+43f63b60-70ba-4d93-8313-af5a130f408e,Compression,Availability,Compilation,Aggregation,B
+479747ae-1f33-4a16-abd4-edd611077a26,print,if,scan,return,B
+4b1e1568-05ad-4a06-aa23-760b2fbdab70,36,42,48,54,C
+4f481a8b-1a97-44b9-80f4-16afc88a0024,Version control,Formatting only,Manual deployment,Static hosting,A
+51103956-4927-4e99-9dfd-73f88ceebdba,To sort records automatically,To uniquely identify each row,To encrypt the table,To create backups,B
+52032953-d37a-4f91-8041-a61bbd634ce7,3 J,6 J,9 J,12 J,C
+528b04c1-b05f-4290-b341-5f1813a75068,CPU scheduling,File system,Deadlock handling,Thread synchronization,B
+52db965b-b14a-4068-97a8-beb10642ce19,3x^2 - 8x + 2,3x^2 - 4x + 2,x^2 - 8x + 2,3x^2 - 8x,A
+53005751-3409-4241-aeeb-2c3bc24d5b0b,It increases inconsistency,It makes execution faster and more consistent,It prevents logging,It removes all review processes,B
+53ee00a1-3a93-4e5f-b7c0-019e58668cc4,Unsupervised learning,Supervised learning,Reinforcement learning,Static programming,B
+546fc354-f0f2-42ba-b69c-f5675118bc2e,How secure the system should be,What the system should do,How stylish the UI looks,How often developers meet,B
+565a6f37-54be-47f6-b132-bee8afa6b446,To format disks,To decide which process gets CPU time,To encrypt memory,To design user interfaces,B
+58e09563-412d-4766-8d66-367a6edd0760,2.5 V,5 V,10 V,20 V,C
+5a60a064-c4f8-4ab2-a28c-c3abc5583154,FCFS,Round Robin,SJF,Priority Scheduling,B
+5a918ccc-11a1-457b-9821-c25a44953122,The number of features only,The proportion of correct predictions,The training speed only,The number of hidden layers,B
+5d019799-d137-403f-a992-24977f16256c,always greater than reflection,always less than reflection,equal to angle of reflection,unrelated to reflection,C
+66c526c9-7cb6-408b-9005-fafb57adbdce,approved,plan,the,manager,D
+673a923c-a686-4dfb-8c9e-e2fde967fa40,System Design Logic Cycle,Software Development Life Cycle,Structured Data Link Control,Simple Development Level Code,B
+68016aeb-f381-4a25-99f4-ff2081bc1c63,Maintenance,Requirements analysis,Deployment,Refactoring,B
+6d5da1da-4789-4cc4-82c3-fcd1557be754,They remove the need for protocols,They separate responsibilities and simplify design,They make all devices identical,They encrypt all traffic automatically,B
+6d800780-087c-4f70-9a1c-485dd7334fce,INNER JOIN,LEFT JOIN,CROSS JOIN,SELF JOIN,B
+6f782e12-e37c-4244-97fc-29ad527d8e80,3,4,5,6,B
+6ffaba3e-cbcb-4c21-9876-d8d1537edb38,Continuous Integration,Central Installation,Code Inspection,Container Isolation,A
+7284721e-804c-4efe-a196-95b041af8839,Rendering,Reasoning,Compression,Compilation,B
+7636f53e-a0ed-44ab-b033-0f88602b5fa4,1 and 6,2 and 3,3 and 4,1 and 5,B
+77b64140-74d9-4b5f-8084-90100386f4af,SaaS,PaaS,IaaS,FaaS,C
+797bde2c-5f14-4cfb-b905-56ef688d949f,Connect to a server,Reuse properties and behavior from another class,Store only numbers,Delete all methods,B
+7e7e0c17-68f5-456a-86ed-ba7f3ffea03e,60 km,90 km,120 km,140 km,C
+7fee74fb-df3c-4b60-815a-dad142532ba4,Improve network speed,Trick users into revealing sensitive information,Compress files,Increase battery life,B
+80987374-fa42-422c-a2d7-de4f54f9044b,1/3,1/4,1/6,1/2,C
+81296f3a-e5aa-4b40-abaa-15b6aa141781,Only stores files,Perceives its environment and takes actions,Compiles HTML,Acts without any goal,B
+869bc4fc-1882-4b16-95c1-891e44398055,Styling pages,Structuring page content,Managing servers only,Encrypting APIs,B
+89bbf5b0-3fc2-4b4e-ad2f-9cdf4470dd21,Median,Mean,Mode,Range,B
+8ccfcc99-ca9e-40ad-b856-a0e54a8d656f,The team are performing well,The team is performing well,The team were performing well,The team have performing well,B
+8dcd091f-8ebd-4fba-b57b-2dada7ce062c,Guaranteed sorted order,Fast indexed access to elements,Automatic compression,No memory usage,B
+904ff607-67fd-4c04-b981-6b7d49cb7b07,LEFT JOIN,RIGHT JOIN,INNER JOIN,FULL JOIN,C
+908b76e7-deee-4232-b04e-36f1dadeba1e,4,5,6,7,B
+939792f5-6d44-47d2-8300-1420745a1435,SMTP,HTTP,FTP only,DHCP,B
+9557d7d0-3c44-4a44-a061-e62b78c7b6ee,IaaS,PaaS,SaaS,Private Cloud,C
+96a36ed2-c969-4af6-bc0c-85811bdafe43,Brother,Sister,Father,Cousin,A
+97405d93-53d9-4015-ad7a-ca1bc85581de,16 g/mol,18 g/mol,20 g/mol,22 g/mol,B
+990ea748-2225-464a-8a35-5e1943ff3ecb,To change programming languages,To understand how well it performs,To remove all features automatically,To stop training permanently,B
+9a0cb278-a456-423d-a2a7-004671f05d8d,if loop,for loop,return loop,class loop,B
+9a76e921-3695-45c1-8b85-ead50dd1d971,It always stores both parts exactly,It causes truncation or type mismatch depending on the language,It becomes a string automatically,It becomes a boolean,B
+9b98f708-5590-4dd8-a414-9cf6b7a9f4d5,Decorate web pages,Identify a device on a network,Compile code,Create classes,B
+9ce8e294-05af-418c-b16e-9750888c2a53,FIFO,LIFO,Random,Sorted,B
+9cf3cbf3-bd51-40c4-b50e-5140ca11e029,0,4,-16,-8,D
+9e9ffd3b-2524-49a3-82ea-0004437e9d84,Finding a path or sequence of actions to reach a goal,Only designing databases,Only sorting files,Only drawing charts,A
+a169997d-8133-4282-9c95-118c7f4bdea0,They attract,They repel,They neutralize,Nothing happens,B
+a225d112-b10a-4d95-a589-70ad5a7daa18,Encapsulation,Inheritance,Polymorphism,Composition,C
+a3658e27-7ee3-4671-800b-cc65e31524d7,To delete columns,To combine related data from multiple tables,To rename all tables,To compress the database,B
+a37ebcae-03cb-4b9e-ba2d-b5aa0e6eb6f2,padding,margin,border,font-size,B
+a48fb855-84d4-4818-895e-651e6e2b7cf0,Leaf,Root,Edge,Queue,B
+a82d3935-6772-4233-868d-9c0a1b73cb3f,Confidentiality,Integrity,Availability,Connectivity,B
+a89014ef-8d19-454d-8767-d1e8bcb4b47b,It guarantees ordered delivery,It is always slower than TCP,It is connectionless and lightweight,It replaces IP,C
+ac0e112a-4772-4c23-af1b-8c67719116f7,To make networks disappear,To allow multiple isolated environments to share physical hardware,To remove the internet,To replace all operating systems,B
+ac86a0e6-8552-4b89-bead-4e7538542299,To decorate output,To repeat hardware behavior,To group reusable logic,To store only text,C
+af8fd9be-b9a4-42e6-9ca1-e18443c653da,Predict labeled outputs,Discover patterns in unlabeled data,Replace databases,Encrypt features,B
+b02a4983-0c06-4b7a-a87f-f47ddfc57a3c,Phishing,Pagination,Normalization,Compilation,A
+b05aa1d8-b81c-4add-abc9-29c95d645084,10%,15%,20%,25%,C
+b3f32a0b-9142-4b9a-9fff-1dce40fa4c6a,Using only local machines,Accessing computing resources over the internet,Writing code without storage,Building hardware chips,B
+b4c2e2cd-aa70-4fca-ac39-3cbc3b5f13ef,P=IV,V=IR,F=ma,Q=mv,B
+b5d047cb-68c2-4bc6-befb-4709c5a9458e,4,5,6,7,C
+b7b2b210-bb6a-4c28-9b4a-63431f29d305,Mean,Median,Total,Count,B
+bcb92b0a-3c9a-47d0-a495-c0e3caf62284,LIFO,FIFO,Recursive,Hashed,B
+bd501631-e82f-4345-b299-6a4ee1963322,A single executed line,A blueprint for creating objects,A database query,A network packet,B
+bfab6bba-fa49-4d5d-a53c-16bd08443d62,slow,quick,weak,lazy,B
+c2e48fdf-7838-4341-bc38-6f90d046382b,push,enqueue,peek,append,C
+c41894b5-5c50-4127-834a-f872adac7b64,INSERT,SELECT,UPDATE,DELETE,B
+c72b6f10-5b8e-4cc8-936b-1bc395a6c1d5,They only work on one machine,They package software consistently across environments,They replace databases entirely,They remove application code,B
+cb01a36a-1b3c-4f8a-86e7-125c1738f436,Only using registers for all storage,Allowing programs to use more memory space conceptually than physically available,Eliminating secondary storage,Disabling paging,B
+ccd174e5-df2e-4b1c-b635-a442b3ede748,40,50,60,70,B
+cd87800e-88f4-4445-837b-a0faec644170,Add interactivity to web pages,Replace HTML entirely,Store tables like a DBMS,Manage only network cables,A
+ceea82ac-0857-4cbd-b779-dc6e1079d9ae,Merge sort,Quick sort,Bubble sort,Heap sort,C
+d09a5ea9-7378-4dd7-bf09-4e42fef6d9c4,Div is faster than all tags,Semantic tags convey meaning and improve structure,Div cannot contain text,Semantic tags are only for CSS,B
+d2470a2a-17c0-4549-ab13-7bf4fae439f8,They cannot store numbers,They have fixed size in many implementations,They cannot be traversed,They cannot use indexes,B
+d2bdb12a-5215-4271-980c-12de1721aed1,Compression,Authorization,Indexing,Caching,B
+d4297da5-da83-4e49-b2df-b2b43fba66fb,if statement,class definition,loop,array,C
+d94c2d48-3eae-41f6-8c26-428c20dff740,div,span,h1,style,C
+db5198a9-08f7-4be5-ae76-9e6087ba7369,1,2,3,4,B
+db8e3b65-522b-4f80-ad0c-2ac638260f74,Guessing randomly,Drawing conclusions from information,Only collecting data,Only compressing images,B
+dd50e66c-7769-4e87-ba35-5611b7f839ad,Randomized,Sorted,Encrypted,Duplicated,B
+e1c96b99-1727-41b6-b3eb-2da03288c99a,m,m/s,m/s^2,kg,B
+e2c4c059-450a-4f40-9556-6f2d12a8d01c,It swaps adjacent elements in every pass,It selects the minimum element and places it in correct position,It only works on strings,It requires recursion,B
+e2e8418e-aec5-48e5-af98-1fdeed042fd7,1 mole,2 moles,3 moles,4 moles,B
+e3d402b0-92cb-40a8-8582-2a157d66cd19,ORDER BY,GROUP BY,WHERE,HAVING,C
+e6071807-806a-440f-bedc-4b78fa6bce9c,To guarantee zero bugs forever,To check whether software behaves as expected,To replace coding,To avoid documentation,B
+e63a8a8a-ebf7-4268-8060-7fea7383c772,Ignoring logs,Monitoring and alerting,Manual compilation only,Disabling metrics,B
+e64c7dda-9ef4-4fa3-be71-17240a1ebffe,Network latency,Data redundancy and update anomalies,Screen resolution issues,Thread deadlocks,B
+e6bf9d34-701d-4ff9-9dc0-18b2fe05f2a8,A compiler error,A runtime instance of a class,A random memory block,A network protocol,B
+e6d15af0-425b-4b9a-9f0d-e2560de21293,Increase redundancy,Reduce redundancy and anomalies,Store everything in one table only,Eliminate all keys,B
+e736a019-e8fd-40f3-984d-ae4809248005,font-size,color,margin,padding,B
+ea44cd58-26b3-4259-bdaa-d8562fe14506,10,20,25,30,B
+eeea3301-f591-48fb-9ed4-e9f200cabd9e,Only the final answer,A specific situation or configuration in the problem,A programming language,A database server,B
+eef4ba82-cbf2-482f-ba90-e3d9bbe42fc9,Covalent bond,Ionic bond,Metallic bond,Hydrogen bond,B
+effd6e38-cffd-4fc3-ba70-a8682cb0494e,Random guessing,Learning from labeled examples,Only manual rules,No data at all,B
+f3785d03-6000-46b3-8e5c-8437e7507e39,A static file on disk,A system that perceives conditions and chooses actions toward goals,A compiler setting,A network cable configuration,B
+f46fb5d1-842e-420c-88e2-778323d21dad,Managing memory in fixed-size blocks,Designing web pages,Routing packets,Sorting files,A
+f658bdfe-e12b-4ba2-8f42-5b1d24d03468,First element,Last element,Middle element,Random element,C
+f6b55c6d-d833-4aef-a7e9-9f0322d6465d,Hydrogen and oxygen,Sodium and chlorine,Carbon and hydrogen,Nitrogen and oxygen,B
+f76ce8f2-c0ea-4e53-ac3d-01317193ed45,mass/acceleration,mass x acceleration,velocity x mass,momentum/time,B
+f78962c5-360e-408f-a1dd-c102dd5bcbb4,Database design,Visual styling and layout,Compiling Java code,Scheduling CPU tasks,B
+f8d765b2-0a8c-48d2-aa1f-768b5decceec,It adds manual work,It reduces repetitive manual effort and errors,It deletes all logs,It removes testing forever,B
+f938a96e-2585-4ac9-95ef-422a8f828415,Application,Transport,Network,Physical,B
+f96b0a26-3c37-47be-8ceb-11174e27ff81,Check the middle element only,Check elements one by one until the target is found,Sort the array first,Use recursion only,B
+fa20ef50-ed90-4172-b566-744daab5a54e,5 m/s,10 m/s,15 m/s,20 m/s,B
+fb2e4f67-63a6-4ad8-9156-32bf5e8db624,Electrons are transferred between atoms,Protons are shared between atoms,Electrons are shared between atoms,Neutrons are exchanged between atoms,C
+3ddbfab3-b823-4f46-8657-6c8304485045,3,7,-3,1/3,A
+43ec5776-1445-4a3d-84b8-b1aa1f02ad6d,1,2,4,6,B
+9d584e44-7952-447d-b337-92cae14f94c1,10 cm,12 cm,14 cm,7 cm,A
+53d907e1-40c6-4bb3-88ad-644079c9da87,3x² ln(x) + x²,3x² + x,x² ln(x),3x ln(x),A
+8948ccbe-a371-485e-b43e-bff289cb474b,0.4,0.6,0.5,0.25,A
+f7e35a3c-f499-41a1-b791-7ae7b0862939,30 km,60 km,120 km,90 km,C
+790f04cb-e17a-4691-be00-57cb6bb207dc,1.25 N,9 N,20 N,40 N,C
+d22e1550-a471-4b67-b4d0-485661050f16,100 J,200 J,20 J,400 J,B
+16e31f0e-8521-4226-898f-24c7237bc3dd,4,6,8,12,B
+3f343751-e53b-4633-88f3-43d11e41e87f,Covalent bond,Hydrogen bond,Ionic bond,Metallic bond,C
+8bb0956a-6f8f-4f64-bc7e-63487b32e967,0.5,1,2,44,B
+515e9012-68b4-499a-8e90-317879282bc1,studied,hard,but,still,C
+87ce2247-8764-4552-8117-e70797c35e53,Neither...nor is incorrect,'was' should be 'were','present' should be 'presents',No error,B
+cd4dc113-3547-485b-be79-a9f16fb60591,20%,25%,50%,10%,B
+e91232df-82d4-4725-9c35-4ac5eb622ddf,20%,25%,80%,100%,B
+a4ae17c8-b062-4734-9c57-4f4fe544dee4,60 km,90 km,300 km,150 km,C
+b8bcf71c-7e8f-4f2c-bbbf-155776ecc0d7,40,42,44,36,B
+dbd32bc2-4f11-4d10-a9a3-01722b3fefc7,int,char,bool,float,D
+23a2de56-d91b-4d78-95e4-8ce5e783740b,B,A,A and B,Error,B
+78cd79d4-0fa0-417b-ba58-fb1828d313c5,A function that takes no parameters,A function that has access to its outer scope variables even after the outer function returns,A class with private variables,A loop that runs indefinitely,B
+e39879ec-5292-4ca9-886a-96e35e0e0931,Method,Instance,Class,Module,C
+8141f881-c6d5-41e1-b870-d66e3e8b1ee6,public,protected,private,internal,C
+b79c8e91-51ae-4fa0-a0cf-9691b132d6c1,Encapsulation,Abstraction,Inheritance,Polymorphism,D
+ce0946b6-c3f8-4d0b-9b3c-5bf589559712,The first element inserted,The last element inserted,The middle element,A random element,B
+4b8077a1-eb0f-48c6-8126-830ccc3dd6b7,O(1),O(log n),O(n),O(n²),C
+15a10342-65ea-4518-8e2a-a08b9c2f471b,A pre-sorted list in descending order,A sorted list in ascending order,A random arrangement of nodes,Only the leaf nodes,B
+6b112324-c3b0-4e52-ba18-3733b7764845,O(log n),O(n²),O(n),O(1),C
+1454aa17-8e09-48f4-9441-8c6d387e51a5,Unsorted,Sorted,Doubly linked,Stored in a tree,B
+dfe65990-bae0-4ad6-b4ce-96d43b356967,n == 1 return 1,n == 0 return 0,n <= 1 return 1,n > 0 return n,C
+6829a7f9-7620-407a-a045-47c6cb7b6a1b,Foreign Key,Candidate Key,Primary Key,Composite Key,C
+1618ae88-bc2d-4610-8dfd-cb26d7d65cd4,ORDER BY,GROUP BY,HAVING,WHERE,D
+9229f4d2-c2be-48a5-a681-fd8a0bdc9de5,Multivalued dependencies,Partial functional dependencies,Transitive functional dependencies,No primary key,C
+34714dc6-9560-42b5-8f6c-8c43ffde6059,A complete program stored in memory,A lightweight unit of execution within a process,A type of file system,A network communication protocol,B
+62af36c4-166a-49c5-a0e0-0e37960f8d83,First Come First Served (FCFS),Round Robin,Shortest Job First (SJF),Priority Scheduling,C
+3c823921-6f55-40f3-8d4f-2d9111e06fc7,Mutual Exclusion,Hold and Wait,Preemption,Circular Wait,C
+d8fb5ef7-2cd5-45c8-8873-8ab39c9b5320,4,5,7,10,C
+3d21d73c-4e6b-4af0-b796-12ef5cd4f941,UDP,ICMP,TCP,IP,C
+8641fb48-ffe4-4633-97ac-c2ecc162d283,192.168.1.1,192.168.1.0,192.168.0.0,192.168.1.255,B
+7cbf6344-1249-448c-bd74-14c848e88333,Agile,Spiral,Waterfall,Scrum,C
+57c723cc-6ff9-4370-b61d-bbc1040d31a5,Unit Testing,Integration Testing,System Testing,Regression Testing,C
+4c78969e-8e90-4bb3-b619-3367ea2592ac,Class Diagram,Use Case Diagram,Sequence Diagram,State Diagram,C
+f9b19838-bc2e-40ed-92e5-2751adf68711,<link>,<a>,<href>,<nav>,B
+e011a7ae-870b-469e-bc68-02968d4deace,margin,border-spacing,padding,gap,C
+994311e3-ec69-4a64-9211-a699d24c4eb4,flex-direction: column,flex-wrap: wrap,align-items: wrap,display: grid,B
+738d2a68-9a6f-4d93-a110-7f6b39899839,SaaS,PaaS,IaaS,FaaS,C
+82709f57-9aed-47ed-91b1-48909ba5ebd5,Automatically backing up data,Automatically adjusting compute resources based on demand,Automatically migrating to a new cloud provider,Automatically encrypting stored data,B
+970676c8-b5c1-4d14-a3f6-aef4a64835de,The time zone of the cloud data center,A geographic region with multiple data centers,An isolated location within a region with its own power and networking,A virtual machine cluster,C
+e807df4c-58ac-47a1-a769-89490f60e909,Data compression,Faster page loading,Encrypted communication between browser and server,User authentication via passwords,C
+f582e917-983e-4f0e-b230-9cf5180b2d71,Phishing,DDoS,Man-in-the-Middle (MITM),SQL Injection,C
+e31f353b-50cc-4b69-b04c-2dba10b6cfd9,The sender's private key,The recipient's public key,A shared symmetric key,The recipient's private key,B
+e062df0d-9038-48f8-9950-7c150244da59,Unsupervised Learning,Reinforcement Learning,Supervised Learning,Semi-supervised Learning,C
+2ec1ab7f-83bc-4004-83e3-d84f0b7bf259,When a model performs well on training data but poorly on new data,When a model is too simple to capture patterns,When training takes too long,When the dataset has too many features,A
+6cc5dd70-4db1-4afb-879d-68e3919d4c8d,To initialize weights,To introduce non-linearity into the network,To normalize input data,To reduce the number of layers,B
+1eebe13a-f71c-4e3d-af21-ac0239c49e30,Depth-First Search,Greedy Best-First Search,Breadth-First Search,A* Search,C
+31839302-ec1f-400b-ba47-c2674427b0ee,A machine's processing speed,A machine's ability to exhibit intelligent behavior indistinguishable from a human,A machine's ability to solve mathematical problems,The accuracy of a machine learning model,B
+bbe9e74a-5463-4a32-a2e0-a12798cebc66,The probability of the agent taking an action,The feedback signal that tells the agent how good its action was,The initial state of the environment,The number of training episodes,B
+d44599b3-88e2-4280-bf81-0302f7191c14,Mode,Median,Mean,Range,C
+19495071-70da-4fc0-8293-bc5953f50802,Weak positive correlation,No correlation,Weak negative correlation,Strong negative correlation,D
+0c611b08-1995-41db-9c45-708fbab40913,RANK(),ROW_NUMBER(),DENSE_RANK(),NTILE(),C
+0de009af-1ee6-41af-b278-c792a7c0b190,Code Integration / Code Deployment,Continuous Integration / Continuous Delivery,Container Infrastructure / Container Deployment,Cloud Infrastructure / Cloud Delivery,B
+03abd267-77d5-4b0e-a9d3-5028b2148072,Jenkins,Docker,Kubernetes,Ansible,C
+1f487abc-06c8-4619-a117-078c065e81c0,The code runs faster each time,Applying the same configuration multiple times produces the same result,The infrastructure auto-scales based on traffic,Containers restart automatically on failure,B
+275eed9a-654a-4120-b0b5-3612967198dc,1/6,1/12,5/36,7/36,A
+31bedd8e-497a-4c76-a0e5-f4daf6932fff,attract; repel,repel; attract,attract; attract,repel; repel,B
+86af839f-b530-4401-857a-249528f28a2c,Sodium,Silicon,Chlorine,Argon,C
+ca87920e-2b16-48e1-b321-e21aefafca6c,Hostile,Indifferent,Charitable,Arrogant,C
+7d0c49a6-1334-43dd-8ecd-e251e51840f3,Simile,Personification,Metaphor,Alliteration,C
+6db7c882-34e8-4bf3-866e-b63f48e8cc70,30,35,36,49,C
+7ccdb582-fb30-4d5a-a392-a9b22feae4f1,36 km/h,40 km/h,54 km/h,72 km/h,A
+b33e883c-1709-4aca-9a13-3cdb7f49f02b,4,5,6,1,B
+62e7b6cb-21fd-48bc-8566-057d8ac3a621,O(n),O(n log n),O(n²),O(2n),C
+3607663f-25fd-4b46-9e79-8085290bfcfc,Child class,Derived class,Parent/Base class,Interface,C
+dfc9ba37-603b-47b2-9ee3-ecb761bc6fc0,push,pop,dequeue,peek,C
+a29cd39a-ee90-42cf-babb-759d2e3c9717,Merge Sort,Quick Sort,Bubble Sort,Selection Sort,C
+67524ddb-bcc0-4c52-8627-fa56541cc3f3,SUM(),AVG(),COUNT(),MAX(),C
+94d9aba8-230f-4caa-8b00-18b47b405753,Priority,Quantum/Time Slice,Burst Time,Arrival Time,B
+9ad64f14-c376-4a5a-914f-526c330888f6,POST,DELETE,PUT,GET,D
+e3d3f21c-d536-4e23-92f2-1433da997cc0,Unit Testing,Alpha Testing,Beta Testing,Regression Testing,C
+b80a95c6-a764-4e76-8dea-b1f50c3f5fc3,.shift(),.unshift(),.pop(),.push(),D
+6a7c68d9-a77b-467f-b280-b4bf322960ab,No difference — both check equality,== checks value only; === checks value AND type,=== checks value only; == checks value and type,=== is used only for objects,B
+9712671d-50be-434f-81e2-5ea9b6568f08,Public Cloud,Community Cloud,Hybrid Cloud,Private Cloud,D
+c7b9337a-b242-4b21-a73e-afa277a1bc05,Encrypts all transmitted data,Monitors and filters incoming and outgoing network traffic,Backs up system files,Detects malware in emails,B
+de3443bc-5860-47f8-9ef9-0d9e663313ee,Linear Regression,Decision Tree,K-Means Clustering,Naive Bayes,C
+536f91bb-d4ad-408f-97b8-8aaa667dfed3,Supervised Learning,Unsupervised Learning,Reinforcement Learning,Transfer Learning,C
+cd5681c0-55f6-41b8-a86b-98b5d0922df0,Bar chart,Pie chart,Line chart,Scatter plot,B
+caf48169-4de8-47f8-ae2b-bb6ca6b12264,Monitoring server performance,Containerizing applications for consistent deployment across environments,Writing infrastructure code,Managing cloud billing,B
+d3c6e7d6-20e5-4202-8d85-c9769019f71b,0,2,4,Undefined,C
+3ebe8c2a-efba-4006-8f49-e36cc06c579d,1 s,2 s,4 s,10 s,B
+67185355-0df4-4825-bcb8-1a698808e1f1,NaCl,MgO,H₂O,KBr,C
+6fe5171f-37d6-4a26-a1cd-9f3f05bb9856,Each of the students have submitted their assignment.,Each of the students has submitted their assignment.,Each of the students have submitted his assignment.,Each of the student has submitted their assignment.,B
+5f61fe88-6610-44b0-a3ab-148f0bc37360,120,130,110,150,A
+0c67e23a-8d88-44f3-a81c-f005d3cb794b,3 1 -1,5 3 1,3 1,Infinite loop,A
+1f760781-09e2-4c19-86ca-8802f7175794,interface,virtual,abstract,override,C
+0bc89d04-9042-4372-b1b1-b1889aa4f5ba,Searching a specific value,Accessing the n-th element,Deleting a node,Sorting the list,C
+83893efd-e193-475f-a473-abb849a9727b,O(n),O(n²),O(log n),O(1),C
+41d0d81f-db64-42fa-8728-dca3ee897ecd,Atomicity,Consistency,Isolation,Durability,D
+e9504dc7-1034-4c09-a08c-4ad72e721022,Network Layer,Session Layer,Transport Layer,Data Link Layer,C
+ae85ac06-7b45-4fe4-94df-7e5d5b25152c,git branch new-branch,git checkout -b new-branch,git merge new-branch,git clone new-branch,B
+b0bfd864-17e8-4656-a3ba-c6598fdfbcac,Running database queries faster,Distributing content from servers geographically closer to users,Securing APIs with authentication,Compressing source code for production,B
+7dfa132b-990c-4c8c-9d6a-cc831f831b0b,To speed up the login process,To replace passwords entirely,"To require multiple verification steps, reducing unauthorized access risk",To encrypt stored passwords,C
+70c4ea8c-3813-4b1c-b666-28950452a92b,Train-test split,Bootstrapping,K-Fold Cross-Validation,Grid Search,C
+89dc54b0-a3c8-4972-b5e2-d35793ff977b,Discriminative Model,Generative AI Model,Reinforcement Agent,Decision Tree,B
+fbb588a0-453f-4954-8c02-6d7d844bdc3e,"Extract, Train, Load","Export, Transform, Label","Extract, Transform, Load","Evaluate, Test, Launch",C

@@ -1,0 +1,391 @@
+subject,type,question,option_a,option_b,option_c,option_d,correct_answer,difficulty,irt_a,irt_b,irt_c
+Algorithms,mcq,What is the time complexity of inserting an element into a binary heap?,O(1),O(log n),O(n),O(n log n),B,medium,1.2,0.3,0.15
+Algorithms,mcq,Which algorithm guarantees shortest path in a graph with non-negative weights?,BFS,DFS,Dijkstra,Bellman-Ford,C,medium,1.3,0.5,0.1
+Algorithms,mcq,What is worst-case complexity of quicksort?,O(n),O(n log n),O(n^2),O(log n),C,medium,1.4,0.6,0.1
+Algorithms,mcq,Which paradigm does merge sort follow?,Greedy,Divide and Conquer,Dynamic Programming,Backtracking,B,easy,1.0,-1.0,0.2
+Algorithms,mcq,Which data structure is used in BFS?,Stack,Queue,Heap,Tree,B,easy,1.1,-1.2,0.2
+Algorithms,mcq,Which algorithm is used for minimum spanning tree?,Dijkstra,Prim,KMP,Binary Search,B,medium,1.3,0.4,0.1
+Algorithms,mcq,Which problem is solved using dynamic programming?,Sorting,Knapsack,Searching,Traversal,B,medium,1.5,0.7,0.1
+Algorithms,mcq,Which sort is stable?,Quick Sort,Heap Sort,Merge Sort,Selection Sort,C,medium,1.2,0.2,0.15
+Algorithms,mcq,What is amortized complexity of dynamic array append?,O(n),O(log n),O(1),O(n log n),C,hard,1.6,1.2,0.1
+Algorithms,mcq,Which algorithm detects cycle in graph?,DFS,BFS,Dijkstra,Prim,A,medium,1.3,0.3,0.1
+Algorithms,mcq,Topological sort is used in?,Trees,Graphs,Arrays,Stacks,B,medium,1.2,0.2,0.1
+Algorithms,mcq,Which is NP-complete?,Sorting,Searching,Travelling Salesman,Traversal,C,hard,1.8,1.5,0.05
+Algorithms,mcq,Which algorithm uses greedy approach?,Prim,Merge Sort,DFS,Quick Sort,A,medium,1.2,0.4,0.1
+Algorithms,mcq,Which structure supports priority queue?,Heap,Stack,Queue,Array,A,easy,1.1,-1.1,0.2
+Algorithms,mcq,Which search works on sorted data?,Linear Search,Binary Search,DFS,BFS,B,easy,1.0,-1.2,0.2
+Algorithms,mcq,Which algorithm uses recursion?,Merge Sort,Bubble Sort,Selection Sort,Insertion Sort,A,easy,1.1,-0.8,0.2
+Algorithms,mcq,Which algorithm works for negative weights?,Dijkstra,BFS,DFS,Bellman-Ford,D,hard,1.6,1.1,0.1
+Algorithms,mcq,Which is divide and conquer?,Quick Sort,Bubble Sort,Insertion Sort,Selection Sort,A,medium,1.3,0.4,0.1
+Algorithms,mcq,Which is not comparison sort?,Merge Sort,Quick Sort,Counting Sort,Heap Sort,C,medium,1.2,0.3,0.15
+Algorithms,mcq,Which algorithm uses backtracking?,N-Queens,BFS,Dijkstra,Prim,A,medium,1.4,0.6,0.1
+Algorithms,situational,You need shortest path with negative edges?,Dijkstra,BFS,Bellman-Ford,DFS,C,medium,1.4,0.5,0.1
+Algorithms,situational,Memory constrained sorting?,Merge Sort,Quick Sort,Heap Sort,Bubble Sort,C,hard,1.6,1.2,0.1
+Algorithms,situational,Real-time search on sorted data?,Linear Search,Binary Search,DFS,BFS,B,easy,1.0,-1.0,0.2
+Algorithms,situational,Need stable sorting?,Quick Sort,Heap Sort,Merge Sort,Selection Sort,C,easy,1.1,-0.9,0.2
+Algorithms,situational,Graph traversal for path existence?,DFS,BFS,Dijkstra,Prim,A,medium,1.2,0.2,0.1
+Algorithms,situational,Massive dataset sorting external?,Quick Sort,Bubble Sort,External Merge Sort,Insertion Sort,C,hard,1.7,1.3,0.1
+Algorithms,situational,Detect cycle in graph?,DFS,BFS,Dijkstra,Prim,A,medium,1.3,0.3,0.1
+Algorithms,situational,Fast approximate solution?,Greedy,Dynamic Programming,DFS,BFS,A,medium,1.2,0.4,0.1
+Algorithms,situational,Overlapping subproblems?,Greedy,Dynamic Programming,Divide and Conquer,Brute Force,B,easy,1.1,-0.7,0.2
+Algorithms,situational,Shortest path with heuristic?,DFS,BFS,A* Search,Dijkstra,C,medium,1.4,0.5,0.1
+Artificial Intelligence,mcq,What is the primary goal of artificial intelligence?,Data storage,Human-like decision making,Networking,Automation,B,easy,1.0,-1.2,0.2
+Artificial Intelligence,mcq,Which search algorithm guarantees optimal solution?,DFS,BFS,A* Search,Greedy Search,B,medium,1.3,0.4,0.1
+Artificial Intelligence,mcq,What does heuristic function do?,Stores data,Estimates cost to goal,Sorts data,Encrypts data,B,medium,1.4,0.5,0.1
+Artificial Intelligence,mcq,Which is uninformed search?,A* Search,Greedy Search,BFS,Hill Climbing,C,easy,1.1,-0.9,0.2
+Artificial Intelligence,mcq,Which technique mimics human reasoning?,Machine Learning,Expert Systems,Networking,DBMS,B,medium,1.3,0.3,0.1
+Artificial Intelligence,mcq,What is Turing test used for?,Speed measurement,Intelligence evaluation,Memory testing,Security testing,B,easy,1.0,-1.1,0.2
+Artificial Intelligence,mcq,Which is a learning paradigm?,Supervised,Unsupervised,Both supervised and unsupervised,None of these,C,easy,1.1,-0.8,0.2
+Artificial Intelligence,mcq,Which is reinforcement learning?,Trial-and-error with rewards,Sorting,Searching,Storage,A,medium,1.4,0.4,0.1
+Artificial Intelligence,mcq,Which model uses neurons?,Decision Tree,Neural Network,SVM,KNN,B,easy,1.0,-1.0,0.2
+Artificial Intelligence,mcq,What is overfitting?,Good generalization,Memorization of training data,Underfitting,Noise removal,B,medium,1.4,0.6,0.1
+Artificial Intelligence,mcq,Which is a classification algorithm?,Linear Regression,Logistic Regression,K-Means,PCA,B,medium,1.3,0.5,0.1
+Artificial Intelligence,mcq,Which is clustering?,KNN,K-Means,Linear Regression,SVM,B,medium,1.2,0.3,0.1
+Artificial Intelligence,mcq,Which improves model generalization?,Overfitting,Regularization,Adding noise,Memorization,B,medium,1.5,0.7,0.1
+Artificial Intelligence,mcq,Which is feature selection?,Reduce irrelevant features,Add noise,Train model,Deploy model,A,medium,1.3,0.4,0.1
+Artificial Intelligence,mcq,Which learning uses a reward system?,Supervised,Unsupervised,Reinforcement,Semi-supervised,C,medium,1.4,0.6,0.1
+Artificial Intelligence,mcq,Which is an NLP task?,Parsing text,Sorting arrays,Encrypting data,Routing packets,A,medium,1.3,0.4,0.1
+Artificial Intelligence,mcq,Which model is probabilistic?,Naive Bayes,SVM,KNN,Decision Tree,A,medium,1.4,0.5,0.1
+Artificial Intelligence,mcq,Which is dimensionality reduction?,PCA,KNN,SVM,Decision Tree,A,medium,1.3,0.5,0.1
+Artificial Intelligence,mcq,Which is deep learning?,Shallow networks,Deep neural networks,Linear regression,K-Means clustering,B,easy,1.0,-1.0,0.2
+Artificial Intelligence,mcq,Which improves training performance?,Normalization,Adding noise,Delaying training,Early stopping only,A,easy,1.1,-0.9,0.2
+Artificial Intelligence,situational,Need optimal path with heuristic?,DFS,BFS,A* Search,Greedy Search,C,medium,1.4,0.5,0.1
+Artificial Intelligence,situational,Large labeled dataset available?,Supervised Learning,Unsupervised Learning,Reinforcement Learning,Semi-supervised Learning,A,easy,1.1,-0.8,0.2
+Artificial Intelligence,situational,Unknown number of clusters?,KNN,K-Means,SVM,Logistic Regression,B,medium,1.3,0.3,0.1
+Artificial Intelligence,situational,Sequential decision making task?,Supervised Learning,Reinforcement Learning,Clustering,Regression,B,medium,1.4,0.6,0.1
+Artificial Intelligence,situational,Avoid overfitting in model?,Add more data and regularize,Memorize training data,Stop training early,Ignore validation loss,B,medium,1.5,0.7,0.1
+Artificial Intelligence,situational,Processing natural language text?,NLP,DBMS,OS,Cloud Computing,A,easy,1.1,-0.9,0.2
+Artificial Intelligence,situational,Reduce high-dimensional features?,KNN,PCA,SVM,Decision Tree,B,medium,1.3,0.5,0.1
+Artificial Intelligence,situational,Need probabilistic classification?,Naive Bayes,KNN,SVM,Decision Tree,A,medium,1.4,0.5,0.1
+Artificial Intelligence,situational,Model needs continuous output?,Classification,Regression,Clustering,Reinforcement Learning,B,medium,1.3,0.4,0.1
+Artificial Intelligence,situational,High variance model indicates?,Overfitting,Underfitting,Optimal fit,Balanced model,A,medium,1.4,0.6,0.1
+Chemistry,mcq,Atomic number represents?,Number of protons,Number of neutrons,Number of electrons,Atomic mass,A,easy,1.0,-1.2,0.2
+Chemistry,mcq,pH of a neutral solution?,0,7,14,1,B,easy,1.0,-1.1,0.2
+Chemistry,mcq,What is Avogadro's number?,6.022e23,1.0e23,9.0e23,3.0e23,A,medium,1.3,0.4,0.1
+Chemistry,mcq,Bond formed by electron sharing?,Ionic,Covalent,Metallic,Hydrogen,B,easy,1.1,-1.0,0.2
+Chemistry,mcq,Example of a strong acid?,HCl,NaOH,CH4,H2,A,easy,1.1,-1.0,0.2
+Chemistry,mcq,Oxidation is?,Gain of electrons,Loss of electrons,Gain of protons,Loss of protons,B,medium,1.3,0.4,0.1
+Chemistry,mcq,Ideal gas law?,PV=nRT,E=mc2,F=ma,V=IR,A,easy,1.1,-1.0,0.2
+Chemistry,mcq,Periodic table arranged by?,Atomic mass,Atomic number,Density,Volume,B,easy,1.1,-1.0,0.2
+Chemistry,mcq,What does a catalyst do?,Increases reaction rate,Decreases reaction rate,Stops the reaction,Reverses the reaction,A,easy,1.1,-0.9,0.2
+Chemistry,mcq,Exothermic reaction releases?,Heat,Light,Gas,Sound,A,easy,1.1,-1.0,0.2
+Chemistry,mcq,pH < 7 means solution is?,Acidic,Basic,Neutral,Salty,A,easy,1.0,-1.1,0.2
+Chemistry,mcq,Electrolysis uses which energy?,Electricity,Heat,Light,Pressure,A,medium,1.3,0.4,0.1
+Chemistry,mcq,Mole concept unit?,mol,kg,g,L,A,easy,1.0,-1.0,0.2
+Chemistry,mcq,Water (H2O) is?,Compound,Element,Mixture,Pure atom,A,easy,1.0,-1.0,0.2
+Chemistry,mcq,Reaction rate depends on?,Temperature,Pressure,Catalyst,All of these,D,medium,1.3,0.5,0.1
+Chemistry,mcq,Entropy measures?,Order,Disorder,Energy,Mass,B,medium,1.4,0.6,0.1
+Chemistry,mcq,Endothermic reaction absorbs?,Heat,Cold,Light,Gas,A,easy,1.1,-1.0,0.2
+Chemistry,mcq,Redox reaction involves?,Electron transfer,Heat transfer,Light transfer,Mass transfer,A,medium,1.4,0.5,0.1
+Chemistry,mcq,Organic chemistry studies?,Carbon compounds,Metals,Inert gases,Ionic solids,A,easy,1.0,-1.0,0.2
+Chemistry,mcq,Gas pressure unit?,atm,mol,kg,L,A,easy,1.0,-1.0,0.2
+Chemistry,situational,Need faster reaction rate?,Add catalyst,Remove heat,Add impurity,Stop reaction,A,medium,1.3,0.4,0.1
+Chemistry,situational,Identify acidic solution?,pH 2,pH 7,pH 10,pH 14,A,easy,1.0,-1.1,0.2
+Chemistry,situational,Neutralization reaction?,Acid + Base,Acid + Acid,Base + Base,Salt + Water,A,easy,1.1,-1.0,0.2
+Chemistry,situational,Increase pressure effect on gas reaction?,Rate increases,Rate decreases,No change,Reaction stops,A,medium,1.3,0.4,0.1
+Chemistry,situational,Electron loss is called?,Reduction,Oxidation,Neutralization,Combustion,B,medium,1.4,0.5,0.1
+Chemistry,situational,Which is the ideal gas law?,PV=nRT,F=ma,E=mc2,V=IR,A,easy,1.1,-1.0,0.2
+Chemistry,situational,Example of exothermic reaction?,Combustion,Melting,Boiling,Dissolving salt,A,medium,1.3,0.4,0.1
+Chemistry,situational,Identify the strong acid?,HCl,NaOH,CH4,H2,A,easy,1.1,-1.0,0.2
+Chemistry,situational,Disorder increases means?,Entropy increases,Entropy decreases,Entropy stays same,Reaction reverses,A,medium,1.4,0.6,0.1
+Chemistry,situational,When does a reaction stop?,At equilibrium,At start,When catalyst added,When pressure removed,A,medium,1.3,0.5,0.1
+Cloud Computing,mcq,What is IaaS?,Infrastructure as a Service,Internet as a Service,Integration as a Service,Interface as a Service,A,easy,1.0,-1.2,0.2
+Cloud Computing,mcq,Which service provides runtime environment?,IaaS,PaaS,SaaS,DaaS,B,medium,1.3,0.4,0.1
+Cloud Computing,mcq,Which model gives full control over OS?,SaaS,PaaS,IaaS,FaaS,C,medium,1.3,0.5,0.1
+Cloud Computing,mcq,Which is an example of SaaS?,AWS EC2,Google Docs,Docker,Kubernetes,B,easy,1.1,-1.0,0.2
+Cloud Computing,mcq,Auto-scaling primarily helps with?,Cost reduction,Security,Latency increase,Manual scaling,A,medium,1.3,0.3,0.1
+Cloud Computing,mcq,Which ensures high availability?,Replication,Deletion,Compression,Encryption,A,medium,1.4,0.4,0.1
+Cloud Computing,mcq,Which storage is object-based?,Amazon S3,EBS,Block storage,File system,A,medium,1.3,0.5,0.1
+Cloud Computing,mcq,Virtualization enables?,Multiple OS on one machine,Single OS only,No OS,Hardware removal,A,easy,1.1,-1.0,0.2
+Cloud Computing,mcq,Which is serverless computing?,Lambda,EC2,S3,VPC,A,medium,1.4,0.6,0.1
+Cloud Computing,mcq,Private cloud deployment is for?,Internal organizational use,Public use,Hybrid use,Community use,A,easy,1.1,-1.0,0.2
+Cloud Computing,mcq,Which ensures fault tolerance?,Load balancing,Data deletion,System crash,Network delay,A,medium,1.4,0.4,0.1
+Cloud Computing,mcq,Which reduces latency globally?,CDN,VPN,Proxy,Firewall,A,medium,1.3,0.3,0.1
+Cloud Computing,mcq,Which is container orchestration?,Docker,Kubernetes,VMware,EC2,B,medium,1.5,0.7,0.1
+Cloud Computing,mcq,Which storage type is block-based?,EBS,S3,Blob,Object store,A,medium,1.3,0.4,0.1
+Cloud Computing,mcq,Which is hybrid cloud?,Mix of public and private,Only public,Only private,Community only,A,medium,1.2,0.3,0.1
+Cloud Computing,mcq,Which improves application performance?,Caching,Deletion,Network delay,Shutdown,A,easy,1.1,-1.0,0.2
+Cloud Computing,mcq,Which secures a cloud network?,Firewall,Cache,Load balancer,CDN,A,medium,1.4,0.5,0.1
+Cloud Computing,mcq,Which AWS service monitors resources?,CloudWatch,S3,EC2,Route53,A,medium,1.3,0.4,0.1
+Cloud Computing,mcq,Which AWS service manages DNS?,Route53,S3,EC2,Lambda,A,medium,1.3,0.4,0.1
+Cloud Computing,mcq,Which ensures cloud elasticity?,Auto-scaling,Manual scaling,Static provisioning,Fixed capacity,A,medium,1.3,0.5,0.1
+Cloud Computing,situational,Traffic spikes suddenly?,Auto-scale,Shutdown,Ignore,Delay response,A,medium,1.4,0.5,0.1
+Cloud Computing,situational,Global content delivery needed?,CDN,Firewall,VPN,Proxy,A,medium,1.3,0.3,0.1
+Cloud Computing,situational,Need full infrastructure control?,SaaS,PaaS,IaaS,FaaS,C,medium,1.3,0.5,0.1
+Cloud Computing,situational,Run serverless function?,Lambda,EC2,S3,VPC,A,medium,1.4,0.6,0.1
+Cloud Computing,situational,Monitor application logs?,CloudWatch,S3,EC2,Route53,A,medium,1.3,0.4,0.1
+Cloud Computing,situational,Secure cloud network?,Firewall,Cache,CDN,VPN,A,medium,1.4,0.5,0.1
+Cloud Computing,situational,Ensure high availability?,Replication,Deletion,Compression,Encryption,A,medium,1.4,0.4,0.1
+Cloud Computing,situational,Reduce global latency?,CDN,Network delay,Stop service,Proxy server,A,medium,1.3,0.3,0.1
+Cloud Computing,situational,Manage containers at scale?,Docker,Kubernetes,VMware,Ansible,B,medium,1.5,0.7,0.1
+Cloud Computing,situational,Use private cloud?,Internal organization,Public users,Hybrid users,Community users,A,easy,1.1,-1.0,0.2
+Cyber Security,mcq,What is phishing?,Email-based social engineering,Firewall bypass,Data encryption,Password hashing,A,easy,1.0,-1.1,0.2
+Cyber Security,mcq,Which ensures confidentiality?,Encryption,Hashing,Firewall,Proxy,A,easy,1.1,-1.0,0.2
+Cyber Security,mcq,Which ensures data integrity?,Hashing,Encryption,Firewall,VPN,A,medium,1.3,0.4,0.1
+Cyber Security,mcq,Which attack overloads a server?,DDoS,Phishing,SQL Injection,XSS,A,medium,1.3,0.4,0.1
+Cyber Security,mcq,SQL injection targets?,Database,Network,Operating System,Cloud,A,medium,1.4,0.5,0.1
+Cyber Security,mcq,Which is authentication?,User login verification,Encryption,Hashing,Firewall,A,easy,1.1,-1.0,0.2
+Cyber Security,mcq,Which cryptographic method uses keys?,Encryption,Hashing,Firewall,Proxy,A,easy,1.1,-1.0,0.2
+Cyber Security,mcq,How should passwords be stored?,Hashed,Encrypted,Plain text,Deleted,A,medium,1.4,0.6,0.1
+Cyber Security,mcq,Which is malware?,Virus,Firewall,VPN,Proxy,A,easy,1.1,-1.0,0.2
+Cyber Security,mcq,Which attack injects malicious scripts?,XSS,SQL Injection,DDoS,Phishing,A,medium,1.4,0.5,0.1
+Cyber Security,mcq,Which protects a network perimeter?,Firewall,Proxy,Cache,CDN,A,easy,1.1,-1.0,0.2
+Cyber Security,mcq,Which ensures service availability?,Backup and recovery,Encryption,Hashing,Firewall,A,medium,1.3,0.4,0.1
+Cyber Security,mcq,Which attack involves brute force?,Password guessing,DDoS,XSS,Phishing,A,medium,1.3,0.4,0.1
+Cyber Security,mcq,VPN primarily provides?,Secure encrypted tunnel,Extra storage,Increased speed,Caching,A,medium,1.3,0.4,0.1
+Cyber Security,mcq,Which is a symmetric algorithm?,AES,RSA,DSA,ECC,A,medium,1.3,0.4,0.1
+Cyber Security,mcq,Which is an asymmetric algorithm?,RSA,AES,DES,Blowfish,A,medium,1.3,0.4,0.1
+Cyber Security,mcq,Which attack intercepts communication?,MITM,DDoS,XSS,SQL Injection,A,medium,1.4,0.5,0.1
+Cyber Security,mcq,Which ensures non-repudiation?,Digital Signature,Encryption,Hashing,Firewall,A,medium,1.4,0.5,0.1
+Cyber Security,mcq,Which tool scans for vulnerabilities?,Nmap,Git,Docker,Kubernetes,A,medium,1.3,0.4,0.1
+Cyber Security,mcq,Which prevents XSS attacks?,Input validation,Encryption,Hashing,Firewall,A,medium,1.4,0.5,0.1
+Cyber Security,situational,User tricked via email?,Phishing,DDoS,SQL Injection,XSS,A,easy,1.1,-1.0,0.2
+Cyber Security,situational,Attacker targets database?,SQL Injection,XSS,DDoS,Phishing,A,medium,1.4,0.5,0.1
+Cyber Security,situational,Secure data in transit?,Encryption,Hashing,Firewall,VPN,A,easy,1.1,-1.0,0.2
+Cyber Security,situational,Store passwords securely?,Hashing,Plain text,Encryption,Delete,A,medium,1.4,0.6,0.1
+Cyber Security,situational,Defend network perimeter?,Firewall,Cache,Proxy,CDN,A,easy,1.1,-1.0,0.2
+Cyber Security,situational,Attacker intercepts messages?,MITM,DDoS,XSS,SQL Injection,A,medium,1.4,0.5,0.1
+Cyber Security,situational,Prevent XSS on web app?,Input validation,Encryption,Hashing,Firewall,A,medium,1.4,0.5,0.1
+Cyber Security,situational,Need secure remote access?,VPN,Firewall,Proxy,Cache,A,medium,1.3,0.4,0.1
+Cyber Security,situational,Ensure data integrity?,Hashing,Encryption,Firewall,VPN,A,medium,1.3,0.4,0.1
+Cyber Security,situational,Detect system vulnerabilities?,Nmap,Git,Docker,Jenkins,A,medium,1.3,0.4,0.1
+Data Analytics,mcq,What is data cleaning?,Remove errors and inconsistencies,Add synthetic data,Delete entire database,Encrypt data,A,easy,1.0,-1.1,0.2
+Data Analytics,mcq,Mean is?,Average of values,Median,Mode,Range,A,easy,1.1,-1.0,0.2
+Data Analytics,mcq,Which measures data spread?,Variance,Mean,Median,Mode,A,medium,1.3,0.4,0.1
+Data Analytics,mcq,Which is a data visualization tool?,Tableau,Python,C++,Java,A,easy,1.1,-1.0,0.2
+Data Analytics,mcq,Which detects patterns in data?,Clustering,Sorting,Searching,Hashing,A,medium,1.3,0.4,0.1
+Data Analytics,mcq,Which handles missing data?,Imputation,Deletion,Ignoring,Stopping,A,medium,1.4,0.5,0.1
+Data Analytics,mcq,Which is categorical data?,Gender,Height,Weight,Age,A,easy,1.1,-1.0,0.2
+Data Analytics,mcq,Which is numerical data?,Age,Gender,Color,Type,A,easy,1.1,-1.0,0.2
+Data Analytics,mcq,Which is an outlier?,Extreme value,Mean,Median,Mode,A,medium,1.3,0.4,0.1
+Data Analytics,mcq,Which tool uses SQL queries?,RDBMS,Excel,Python,Tableau,A,medium,1.3,0.4,0.1
+Data Analytics,mcq,Which chart shows distribution?,Histogram,Bar chart,Pie chart,Line chart,A,medium,1.3,0.4,0.1
+Data Analytics,mcq,Which analytics is predictive?,Regression,Sorting,Cleaning,Storage,A,medium,1.4,0.5,0.1
+Data Analytics,mcq,Which analytics is descriptive?,Summary statistics,Prediction,Clustering,Regression,A,medium,1.3,0.4,0.1
+Data Analytics,mcq,Which Python library is used for data analysis?,Pandas,HTML,SQL,Java,A,medium,1.3,0.4,0.1
+Data Analytics,mcq,Which handles big data processing?,Hadoop,Excel,Word,PowerPoint,A,medium,1.4,0.5,0.1
+Data Analytics,mcq,Which chart shows correlation?,Scatter plot,Bar chart,Pie chart,Line chart,A,medium,1.3,0.4,0.1
+Data Analytics,mcq,Which is a data pipeline process?,ETL,SQL query,CSV file,JSON format,A,medium,1.3,0.4,0.1
+Data Analytics,mcq,Which is feature engineering?,Transform and create features,Delete features,Ignore features,Store raw data,A,medium,1.4,0.5,0.1
+Data Analytics,mcq,Which is a Business Intelligence tool?,Power BI,Python,SQL,Java,A,medium,1.3,0.4,0.1
+Data Analytics,mcq,Which is time series data?,Sequential time-ordered data,Random data,Categorical data,Nominal data,A,medium,1.3,0.4,0.1
+Data Analytics,situational,Handle missing values?,Impute missing data,Delete all rows,Ignore them,Stop analysis,A,medium,1.4,0.5,0.1
+Data Analytics,situational,Find hidden patterns?,Clustering,Regression,Sorting,Searching,A,medium,1.3,0.4,0.1
+Data Analytics,situational,Visualize data distribution?,Histogram,Bar chart,Pie chart,Line chart,A,medium,1.3,0.4,0.1
+Data Analytics,situational,Detect data outliers?,Identify extreme values,Use mean,Use median,Use mode,A,medium,1.3,0.4,0.1
+Data Analytics,situational,Predict future value?,Regression,Clustering,Sorting,Searching,A,medium,1.4,0.5,0.1
+Data Analytics,situational,Summarize large dataset?,Descriptive statistics,Clustering,Prediction,Cleaning,A,medium,1.3,0.4,0.1
+Data Analytics,situational,Process big data?,Hadoop,Excel,Word,PowerPoint,A,medium,1.4,0.5,0.1
+Data Analytics,situational,Visualize business insights?,Tableau,Python,SQL,Java,A,medium,1.3,0.4,0.1
+Data Analytics,situational,Build data pipeline?,ETL process,SQL query,Excel sheet,Python script,A,medium,1.3,0.4,0.1
+Data Analytics,situational,Find relationship between variables?,Scatter plot,Bar chart,Pie chart,Line chart,A,medium,1.3,0.4,0.1
+Data Structures,mcq,Which is LIFO?,Stack,Queue,Tree,Graph,A,easy,1.0,-1.2,0.2
+Data Structures,mcq,Which is FIFO?,Queue,Stack,Tree,Graph,A,easy,1.0,-1.2,0.2
+Data Structures,mcq,Which is hierarchical?,Tree,Stack,Queue,Array,A,easy,1.1,-1.0,0.2
+Data Structures,mcq,Which uses hashing?,Hash Table,Stack,Queue,Tree,A,medium,1.3,0.4,0.1
+Data Structures,mcq,Which is linear?,Array,Tree,Graph,Heap,A,easy,1.1,-1.0,0.2
+Data Structures,mcq,Which supports priority?,Heap,Stack,Queue,Array,A,medium,1.3,0.4,0.1
+Data Structures,mcq,Which traversal uses a Queue?,BFS,DFS,Inorder,Postorder,A,medium,1.3,0.4,0.1
+Data Structures,mcq,Which traversal uses a Stack?,DFS,BFS,Level order,Inorder,A,medium,1.3,0.4,0.1
+Data Structures,mcq,Which is dynamic in size?,Linked List,Array,Stack,Queue,A,medium,1.3,0.4,0.1
+Data Structures,mcq,Which has O(1) random access?,Array,Linked List,Tree,Graph,A,easy,1.1,-1.0,0.2
+Data Structures,mcq,Which is a balanced tree?,AVL Tree,Stack,Queue,Array,A,medium,1.4,0.5,0.1
+Data Structures,mcq,Which technique avoids hash collisions?,Chaining,Sorting,Indexing,Compression,A,medium,1.4,0.5,0.1
+Data Structures,mcq,Which data structure supports recursion best?,Stack,Queue,Heap,Array,A,medium,1.3,0.4,0.1
+Data Structures,mcq,Which uses nodes and pointers?,Linked List,Array,Stack,Heap,A,easy,1.1,-1.0,0.2
+Data Structures,mcq,Which represents a graph?,Vertices and edges,Array elements,Stack frames,Queue items,A,medium,1.3,0.4,0.1
+Data Structures,mcq,Which stores key-value pairs?,Map,Stack,Array,Queue,A,medium,1.3,0.4,0.1
+Data Structures,mcq,Which is non-linear?,Tree,Array,Stack,Queue,A,medium,1.3,0.4,0.1
+Data Structures,mcq,Which satisfies the heap property?,Heap,Stack,Queue,Array,A,medium,1.3,0.4,0.1
+Data Structures,mcq,Which structure uses pointers between nodes?,Linked List,Array,Stack,Heap,A,medium,1.3,0.4,0.1
+Data Structures,mcq,Which structure can be cyclic?,Graph,Array,Tree,Stack,A,medium,1.3,0.4,0.1
+Data Structures,situational,Need LIFO ordering?,Stack,Queue,Heap,Array,A,easy,1.1,-1.0,0.2
+Data Structures,situational,Need FIFO ordering?,Queue,Stack,Heap,Array,A,easy,1.1,-1.0,0.2
+Data Structures,situational,Need fast key lookup?,Hash Table,Array,Stack,Queue,A,medium,1.3,0.4,0.1
+Data Structures,situational,Need dynamic resizing?,Linked List,Array,Stack,Queue,A,medium,1.3,0.4,0.1
+Data Structures,situational,Manage priority tasks?,Heap,Stack,Queue,Array,A,medium,1.3,0.4,0.1
+Data Structures,situational,Track recursive function calls?,Stack,Queue,Heap,Array,A,medium,1.3,0.4,0.1
+Data Structures,situational,Store hierarchical data?,Tree,Stack,Queue,Array,A,medium,1.3,0.4,0.1
+Data Structures,situational,Model relationships in graph?,Vertices and edges,Array elements,Stack frames,Queue items,A,medium,1.3,0.4,0.1
+Data Structures,situational,Traversal using BFS?,Queue,Stack,Heap,Array,A,medium,1.3,0.4,0.1
+Data Structures,situational,Traversal using DFS?,Stack,Queue,Heap,Array,A,medium,1.3,0.4,0.1
+Database Management Systems,mcq,What does ACID stand for?,Atomicity Consistency Isolation Durability,Accuracy Consistency Isolation Durability,Atomicity Control Isolation Durability,Atomicity Consistency Integration Durability,A,medium,1.3,0.4,0.1
+Database Management Systems,mcq,Which normal form removes partial dependency?,1NF,2NF,3NF,BCNF,B,medium,1.4,0.5,0.1
+Database Management Systems,mcq,Which command retrieves data?,INSERT,UPDATE,SELECT,DELETE,C,easy,1.1,-1.0,0.2
+Database Management Systems,mcq,Primary key is?,Unique row identifier,Duplicate field,Optional field,Foreign field,A,easy,1.1,-1.0,0.2
+Database Management Systems,mcq,Foreign key ensures?,Referential integrity,Query speed,Storage size,Data security,A,medium,1.3,0.4,0.1
+Database Management Systems,mcq,Which join returns all rows from both tables?,INNER JOIN,LEFT OUTER JOIN,RIGHT OUTER JOIN,FULL OUTER JOIN,D,medium,1.4,0.5,0.1
+Database Management Systems,mcq,Which is a NoSQL database?,MongoDB,MySQL,PostgreSQL,Oracle,A,easy,1.1,-1.0,0.2
+Database Management Systems,mcq,Which index improves?,Search speed,Storage space,Deletion speed,Backup size,A,medium,1.3,0.4,0.1
+Database Management Systems,mcq,Which isolation level prevents dirty reads?,Read Uncommitted,Read Committed,Repeatable Read,Serializable,B,medium,1.4,0.5,0.1
+Database Management Systems,mcq,Which language defines schema?,DDL,DML,DCL,TCL,A,easy,1.1,-1.0,0.2
+Database Management Systems,mcq,Which removes duplicate rows?,DISTINCT,GROUP BY,ORDER BY,WHERE,A,easy,1.1,-1.0,0.2
+Database Management Systems,mcq,Which clause filters rows?,WHERE,HAVING,ORDER BY,GROUP BY,A,easy,1.1,-1.0,0.2
+Database Management Systems,mcq,Which supports ACID transactions?,RDBMS,NoSQL,File system,In-memory DB,A,medium,1.3,0.4,0.1
+Database Management Systems,mcq,Which is a schema design tool?,ER Model,HTML,CSS,JSON,A,medium,1.3,0.4,0.1
+Database Management Systems,mcq,Which ensures data consistency?,Constraints,Indexes,Joins,Views,A,medium,1.3,0.4,0.1
+Database Management Systems,mcq,Which command modifies existing data?,UPDATE,SELECT,CREATE,DROP,A,easy,1.1,-1.0,0.2
+Database Management Systems,mcq,Which ensures transaction durability?,Transaction logs,Cache,Indexes,Views,A,medium,1.4,0.5,0.1
+Database Management Systems,mcq,Which is an aggregation function?,SUM,WHERE,JOIN,SELECT,A,easy,1.1,-1.0,0.2
+Database Management Systems,mcq,What is normalization?,Reduce data redundancy,Increase data redundancy,Remove all tables,Add more columns,A,medium,1.3,0.4,0.1
+Database Management Systems,mcq,What is denormalization?,Increase redundancy for performance,Reduce data redundancy,Delete all records,Add more indexes,A,medium,1.3,0.4,0.1
+Database Management Systems,situational,Need fast data lookup?,Index,Join,Delete,Update,A,medium,1.3,0.4,0.1
+Database Management Systems,situational,Avoid duplicate data?,Normalization,Denormalization,Indexing,Joining,A,medium,1.3,0.4,0.1
+Database Management Systems,situational,Retrieve records from table?,SELECT,INSERT,UPDATE,DELETE,A,easy,1.1,-1.0,0.2
+Database Management Systems,situational,Ensure referential integrity?,Foreign key,Primary key,Index,View,A,medium,1.3,0.4,0.1
+Database Management Systems,situational,Modify existing records?,UPDATE,SELECT,INSERT,DELETE,A,easy,1.1,-1.0,0.2
+Database Management Systems,situational,Handle transaction failure?,Rollback,Commit,Savepoint,Delete,A,medium,1.4,0.5,0.1
+Database Management Systems,situational,Filter specific rows?,WHERE,HAVING,GROUP BY,ORDER BY,A,easy,1.1,-1.0,0.2
+Database Management Systems,situational,Aggregate column values?,SUM,WHERE,SELECT,JOIN,A,easy,1.1,-1.0,0.2
+Database Management Systems,situational,Prevent dirty reads?,Isolation level,Atomicity,Durability,Consistency,A,medium,1.4,0.5,0.1
+Database Management Systems,situational,Define database schema?,DDL,DML,DCL,TCL,A,easy,1.1,-1.0,0.2
+DevOps,mcq,What is CI?,Continuous Integration,Code Integration,Cloud Integration,Control Integration,A,easy,1.1,-1.0,0.2
+DevOps,mcq,What is CD?,Continuous Delivery,Code Deployment,Cloud Deployment,Control Deployment,A,easy,1.1,-1.0,0.2
+DevOps,mcq,Which tool is used for CI/CD?,Jenkins,Docker,Kubernetes,Git,A,medium,1.3,0.4,0.1
+DevOps,mcq,Which is a container tool?,Docker,Git,Ansible,Jenkins,A,easy,1.1,-1.0,0.2
+DevOps,mcq,Which is a container orchestration tool?,Kubernetes,Docker,Git,Jenkins,A,medium,1.4,0.5,0.1
+DevOps,mcq,Which tool manages version control?,Git,Docker,Kubernetes,Ansible,A,easy,1.1,-1.0,0.2
+DevOps,mcq,Which tool handles configuration management?,Ansible,Git,Docker,Jenkins,A,medium,1.3,0.4,0.1
+DevOps,mcq,Which tool implements Infrastructure as Code?,Terraform,Docker,Git,Ansible,A,medium,1.4,0.5,0.1
+DevOps,mcq,Which tool is used for monitoring?,Prometheus,Git,Docker,Jenkins,A,medium,1.3,0.4,0.1
+DevOps,mcq,Which builds automated pipelines?,CI/CD,Docker,Ansible,Jenkins,A,easy,1.1,-1.0,0.2
+DevOps,mcq,Which is a container image registry?,Docker Hub,Git,Jenkins,Kubernetes,A,medium,1.3,0.4,0.1
+DevOps,mcq,Which reduces deployment errors?,Automation,Manual process,Documentation,Ad-hoc testing,A,easy,1.1,-1.0,0.2
+DevOps,mcq,Which ensures app scalability?,Kubernetes,Docker,Git,Jenkins,A,medium,1.4,0.5,0.1
+DevOps,mcq,Which handles log aggregation?,ELK Stack,Git,Docker,Terraform,A,medium,1.3,0.4,0.1
+DevOps,mcq,Which automates build processes?,CI,Manual builds,CD,Git,A,easy,1.1,-1.0,0.2
+DevOps,mcq,Which handles secrets management?,Vault,Git,Docker,Jenkins,A,medium,1.4,0.5,0.1
+DevOps,mcq,Which represents immutable infrastructure?,Containers,Virtual machines,Shell scripts,Manual setup,A,medium,1.3,0.4,0.1
+DevOps,mcq,Which tool manages infrastructure?,Terraform,Git,Docker,Jenkins,A,medium,1.4,0.5,0.1
+DevOps,mcq,Which handles deployment automation?,CD,CI,Git,Docker,A,easy,1.1,-1.0,0.2
+DevOps,mcq,Which improves delivery speed?,Automation,Manual process,Documentation,Delays,A,easy,1.1,-1.0,0.2
+DevOps,situational,Automate build process?,CI,CD,Git,Docker,A,easy,1.1,-1.0,0.2
+DevOps,situational,Deploy application pipeline?,CD,CI,Git,Docker,A,easy,1.1,-1.0,0.2
+DevOps,situational,Package application in container?,Docker,Kubernetes,Git,Ansible,A,easy,1.1,-1.0,0.2
+DevOps,situational,Scale application automatically?,Kubernetes,Docker,Git,Jenkins,A,medium,1.4,0.5,0.1
+DevOps,situational,Define infra as code?,Terraform,Ansible,Docker,Git,A,medium,1.4,0.5,0.1
+DevOps,situational,Manage server configuration?,Ansible,Terraform,Docker,Git,A,medium,1.3,0.4,0.1
+DevOps,situational,Centralize application logs?,ELK Stack,Git,Docker,Jenkins,A,medium,1.3,0.4,0.1
+DevOps,situational,Store and manage secrets?,Vault,Git,Docker,Jenkins,A,medium,1.4,0.5,0.1
+DevOps,situational,Track code changes?,Git,Docker,Jenkins,Ansible,A,easy,1.1,-1.0,0.2
+DevOps,situational,Monitor system metrics?,Prometheus,Git,Docker,ELK Stack,A,medium,1.3,0.4,0.1
+English Communication,mcq,Choose the correct sentence?,He go to school,He goes to school,He going to school,He gone to school,B,easy,1.1,-1.0,0.2
+English Communication,mcq,Synonym of quick?,Fast,Slow,Lazy,Heavy,A,easy,1.1,-1.0,0.2
+English Communication,mcq,Antonym of happy?,Sad,Joyful,Glad,Pleased,A,easy,1.1,-1.0,0.2
+English Communication,mcq,Choose the correct present continuous tense?,She is eating,She eat,She eaten,She ate,B,easy,1.1,-1.0,0.2
+English Communication,mcq,Plural of child?,Childs,Children,Childes,Childrens,B,easy,1.1,-1.0,0.2
+English Communication,mcq,Correct article before apple?,a apple,an apple,the apple,apple,B,easy,1.1,-1.0,0.2
+English Communication,mcq,Adjective modifies?,Noun,Verb,Adverb,Pronoun,A,easy,1.1,-1.0,0.2
+English Communication,mcq,Adverb modifies?,Verb,Noun,Adjective,Pronoun,A,easy,1.1,-1.0,0.2
+English Communication,mcq,Which is in passive voice?,Ball was thrown,Ball throws,Ball is throw,Ball throwed,A,medium,1.3,0.4,0.1
+English Communication,mcq,Correct preposition for schedule?,On time,In time,At time,By time,A,medium,1.3,0.4,0.1
+English Communication,mcq,Correct spelling?,Receive,Recieve,Recive,Receave,A,easy,1.1,-1.0,0.2
+English Communication,mcq,Which is a noun?,Apple,Run,Quickly,Beautiful,A,easy,1.1,-1.0,0.2
+English Communication,mcq,Which is a verb?,Run,Apple,Blue,Flower,A,easy,1.1,-1.0,0.2
+English Communication,mcq,Which is a pronoun?,He,Run,Blue,Apple,A,easy,1.1,-1.0,0.2
+English Communication,mcq,Which is a conjunction?,And,Run,Blue,Apple,A,easy,1.1,-1.0,0.2
+English Communication,mcq,Standard English sentence structure?,SVO,SOV,VSO,OVS,A,medium,1.3,0.4,0.1
+English Communication,mcq,Which is a formal tone?,Professional,Casual,Humorous,Informal,A,medium,1.3,0.4,0.1
+English Communication,mcq,Correct email etiquette?,Formal greeting,Slang opening,Emoji only,No subject line,A,easy,1.1,-1.0,0.2
+English Communication,mcq,Which has a grammar error?,He go,He goes,He went,He is going,A,easy,1.1,-1.0,0.2
+English Communication,mcq,What improves writing clarity?,Simple words,Complex jargon,Long sentences,Passive voice,A,easy,1.1,-1.0,0.2
+English Communication,situational,Writing formal email?,Use professional tone,Use casual tone,Use slang,Use emoji,A,easy,1.1,-1.0,0.2
+English Communication,situational,Fix grammar issue?,Correct the tense,Ignore errors,Use slang,Abbreviate,A,easy,1.1,-1.0,0.2
+English Communication,situational,Improve writing clarity?,Simplify language,Add jargon,Use passive voice,Lengthen sentences,A,easy,1.1,-1.0,0.2
+English Communication,situational,Fix incorrect spelling?,Proofread and correct,Ignore errors,Guess spelling,Skip the word,A,easy,1.1,-1.0,0.2
+English Communication,situational,Make writing professional?,Use formal tone,Use casual tone,Use slang,Use emoji,A,easy,1.1,-1.0,0.2
+English Communication,situational,Avoid ambiguous writing?,Use clear precise words,Use vague terms,Add jargon,Use abbreviations,A,medium,1.3,0.4,0.1
+English Communication,situational,Fix incorrect sentence?,Check and fix grammar,Use slang,Ignore errors,Skip review,A,easy,1.1,-1.0,0.2
+English Communication,situational,Correct plural of child?,Children,Childs,Childes,Childrens,A,easy,1.1,-1.0,0.2
+English Communication,situational,Use correct article before apple?,an,a,the,no article,A,easy,1.1,-1.0,0.2
+English Communication,situational,When to use passive voice?,When object is the focus,Subject is the focus,Verb is the focus,Adverb is the focus,A,medium,1.3,0.4,0.1
+Machine Learning,mcq,What is overfitting?,Memorization of training data,Generalization to new data,Noise removal,Underfitting,A,medium,1.4,0.6,0.1
+Machine Learning,mcq,What is underfitting?,Poor model performance,Overfitting,Perfect fit,High accuracy,A,medium,1.3,0.4,0.1
+Machine Learning,mcq,Which is supervised learning?,Regression,Clustering,PCA,K-Means,A,easy,1.1,-1.0,0.2
+Machine Learning,mcq,Which is unsupervised learning?,Clustering,Regression,SVM,Decision Tree,A,easy,1.1,-1.0,0.2
+Machine Learning,mcq,Which is a classification algorithm?,Logistic Regression,Linear Regression,K-Means,PCA,A,medium,1.3,0.4,0.1
+Machine Learning,mcq,Which technique reduces overfitting?,Regularization,Adding noise,Memorization,Removing data,A,medium,1.4,0.5,0.1
+Machine Learning,mcq,What is a loss function?,Error measure,Accuracy score,Precision value,Recall rate,A,medium,1.3,0.4,0.1
+Machine Learning,mcq,What is gradient descent?,Optimization algorithm,Clustering method,Classification method,Regression type,A,medium,1.4,0.5,0.1
+Machine Learning,mcq,Which is an ensemble method?,Random Forest,KNN,SVM,Logistic Regression,A,medium,1.4,0.5,0.1
+Machine Learning,mcq,What is SVM?,Support vector classifier,Clustering algorithm,Dimensionality reducer,Generative model,A,medium,1.3,0.4,0.1
+Machine Learning,mcq,What is KNN?,Lazy learner,Eager learner,Deep learner,Active learner,A,medium,1.3,0.4,0.1
+Machine Learning,mcq,Which model uses neurons?,Neural Network,SVM,KNN,Decision Tree,A,easy,1.1,-1.0,0.2
+Machine Learning,mcq,Which is an activation function?,ReLU,Gradient,Loss,Bias,A,medium,1.3,0.4,0.1
+Machine Learning,mcq,What is bias in ML?,Offset term,Slope,Weight,Gradient,A,medium,1.3,0.4,0.1
+Machine Learning,mcq,What is variance in ML?,Model sensitivity to training data,Model accuracy,Model speed,Model size,A,medium,1.3,0.4,0.1
+Machine Learning,mcq,Which improves model performance?,More quality training data,Adding noise,Randomness,Increasing bias,A,easy,1.1,-1.0,0.2
+Machine Learning,mcq,What is feature scaling?,Normalize feature values,Cluster features,Classify features,Predict features,A,medium,1.3,0.4,0.1
+Machine Learning,mcq,What is PCA?,Dimensionality reduction,Classification,Regression,Clustering,A,medium,1.4,0.5,0.1
+Machine Learning,mcq,Which is a classification metric?,Accuracy,MSE,RMSE,MAE,A,easy,1.1,-1.0,0.2
+Machine Learning,mcq,Formula for recall?,TP/(TP+FN),TP/(TP+FP),TN/(TN+FP),TP/Total,A,medium,1.4,0.5,0.1
+Machine Learning,situational,Model shows high variance?,Overfitting,Underfitting,Good generalization,Accurate model,A,medium,1.4,0.6,0.1
+Machine Learning,situational,Data has no labels?,Clustering,Classification,Regression,SVM,A,medium,1.3,0.4,0.1
+Machine Learning,situational,Assign categories to data?,Logistic Regression,Linear Regression,K-Means,PCA,A,medium,1.3,0.4,0.1
+Machine Learning,situational,Minimize training error?,Gradient Descent,Random Search,Grid Search,Manual Tuning,A,medium,1.4,0.5,0.1
+Machine Learning,situational,Reduce feature dimensions?,PCA,KNN,SVM,Regression,A,medium,1.4,0.5,0.1
+Machine Learning,situational,Prevent overfitting?,Regularization,Add noise,Remove data,Memorize,A,medium,1.4,0.5,0.1
+Machine Learning,situational,Standardize feature ranges?,Feature scaling,Clustering,Classification,Prediction,A,medium,1.3,0.4,0.1
+Machine Learning,situational,Combine multiple models?,Random Forest,SVM,KNN,Logistic Regression,A,medium,1.4,0.5,0.1
+Machine Learning,situational,Measure classification quality?,Accuracy,MSE,RMSE,MAE,A,easy,1.1,-1.0,0.2
+Machine Learning,situational,Optimize the loss function?,Gradient Descent,Random Search,Manual Tuning,Ignore loss,A,medium,1.4,0.5,0.1
+Mathematics,mcq,Derivative of x^2?,2x,x^2,1,x,A,easy,1.1,-1.0,0.2
+Mathematics,mcq,Integral of 1 dx?,x,1,0,x^2,A,easy,1.1,-1.0,0.2
+Mathematics,mcq,Value of π (pi)?,3.14159,2.14159,4.14159,1.14159,A,easy,1.1,-1.0,0.2
+Mathematics,mcq,Value of log(1)?,0,1,10,-1,A,easy,1.1,-1.0,0.2
+Mathematics,mcq,Derivative of sin x?,cos x,sin x,-cos x,-sin x,A,medium,1.3,0.4,0.1
+Mathematics,mcq,Determinant of 2x2 matrix [a b; c d]?,ad-bc,ab+cd,a+b+c+d,ad+bc,A,medium,1.3,0.4,0.1
+Mathematics,mcq,Limit of sinx/x as x→0?,1,0,∞,-1,A,medium,1.4,0.5,0.1
+Mathematics,mcq,Vector magnitude formula?,√(x²+y²),x+y,x-y,x*y,A,medium,1.3,0.4,0.1
+Mathematics,mcq,Probability range?,0 to 1,1 to 10,-1 to 1,0 to ∞,A,easy,1.1,-1.0,0.2
+Mathematics,mcq,Mean formula?,Sum/n,Sum*n,Max-Min,Sum/2,A,easy,1.1,-1.0,0.2
+Mathematics,mcq,Variance measures?,Data spread,Mean,Mode,Median,A,medium,1.3,0.4,0.1
+Mathematics,mcq,Slope formula?,(y2-y1)/(x2-x1),(x2-x1)/(y2-y1),(y1-y2)/(x1-x2),y/x,A,easy,1.1,-1.0,0.2
+Mathematics,mcq,Area of a circle?,πr²,2πr,r²,πd,A,easy,1.1,-1.0,0.2
+Mathematics,mcq,Derivative of a constant?,0,1,x,x²,A,easy,1.1,-1.0,0.2
+Mathematics,mcq,Exponent multiplication rule?,a^m * a^n = a^(m+n),a^m * a^n = a^(m-n),a^m * a^n = a^(m*n),a^m * a^n = a^(m/n),A,medium,1.3,0.4,0.1
+Mathematics,mcq,Logarithm product rule?,log(ab)=log a+log b,log(a+b)=log a*log b,log(a/b)=log a+log b,log(a^b)=log a/log b,A,medium,1.3,0.4,0.1
+Mathematics,mcq,Quadratic formula?,(-b±√(b²-4ac))/2a,(-b±√(b²+4ac))/2a,(b±√(b²-4ac))/2a,(-b±√(b²-4ac))/a,A,medium,1.4,0.5,0.1
+Mathematics,mcq,Distance between two points?,√((x2-x1)²+(y2-y1)²),(x2-x1)+(y2-y1),√((x2+x1)²+(y2+y1)²),(x2-x1)*(y2-y1),A,medium,1.3,0.4,0.1
+Mathematics,mcq,Permutation formula?,n!,nCr,n/(n-r),n!*r!,A,medium,1.3,0.4,0.1
+Mathematics,mcq,Combination formula?,nCr = n!/(r!(n-r)!),nPr,n!+r!,n*r,A,medium,1.3,0.4,0.1
+Mathematics,situational,Find slope of a line?,Use (y2-y1)/(x2-x1),Count steps,Estimate visually,Use table,A,easy,1.1,-1.0,0.2
+Mathematics,situational,Calculate area of a circle?,πr²,2πr,πd,r²,A,easy,1.1,-1.0,0.2
+Mathematics,situational,Find rate of change?,Differentiate,Integrate,Multiply,Divide,A,medium,1.3,0.4,0.1
+Mathematics,situational,Valid probability range?,0 to 1,1 to 10,-1 to 0,0 to 100,A,easy,1.1,-1.0,0.2
+Mathematics,situational,Find distance between points?,Use distance formula,Guess,Count units,Estimate,A,medium,1.3,0.4,0.1
+Mathematics,situational,Solve quadratic equation?,Quadratic formula,Trial and error,Graph only,Divide by x,A,medium,1.4,0.5,0.1
+Mathematics,situational,Find average of values?,Sum/n,Sum*n,Max-Min,Sum/2,A,easy,1.1,-1.0,0.2
+Mathematics,situational,Find magnitude of a vector?,√(sum of squares),Sum of components,Product of components,Maximum component,A,medium,1.3,0.4,0.1
+Mathematics,situational,Evaluate a limit?,Apply limit rules,Ignore the limit,Guess the value,Average values,A,medium,1.4,0.5,0.1
+Mathematics,situational,Simplify logarithm?,Apply log rules,Ignore,Expand randomly,Guess,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,mcq,What is encapsulation?,Data hiding and bundling,Inheritance,Polymorphism,Abstraction,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,mcq,What is inheritance?,Reuse parent class code,Hide data,Polymorphism,Encapsulation,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,mcq,Polymorphism means?,Many forms,One fixed form,No form,Static form,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,mcq,Abstraction hides?,Implementation details,Raw data,All methods,All objects,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,mcq,A class is?,Blueprint for objects,An object,An instance,A method,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,mcq,An object is?,Instance of a class,Definition of class,Blueprint,A method,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,mcq,What is a constructor?,Initializes an object,Destroys an object,Copies an object,Prints an object,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,mcq,What is a destructor?,Destroys an object,Initializes an object,Copies an object,Prints an object,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,mcq,Method overloading?,Same name different parameters,Same name same parameters,Different name same parameters,Different name different parameters,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,mcq,Method overriding?,Runtime polymorphism,Compile-time polymorphism,Static binding,No inheritance needed,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,mcq,Which is an access specifier?,Private,Public,Protected,Static,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,mcq,Static method belongs to?,Class level,Instance level,Object level,Method level,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,mcq,Dynamic binding resolves at?,Runtime,Compile time,Static resolution,Link time,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,mcq,Interface is?,Abstract contract,Concrete class,Static class,Final class,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,mcq,Multiple inheritance means?,Many parent classes,One parent class,No parent class,Self-inheritance,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,mcq,Composition represents?,Has-a relationship,Is-a relationship,Uses-a relationship,Depends-on relation,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,mcq,Aggregation represents?,Weak has-a relationship,Strong has-a relationship,Is-a relationship,Uses-a relationship,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,mcq,Main benefit of encapsulation?,Security and access control,Execution speed,Code complexity,Data redundancy,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,mcq,Which type of polymorphism is overloading?,Compile-time polymorphism,Runtime polymorphism,Static polymorphism only,No polymorphism,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,mcq,Example of abstraction?,Interface,Variable,Loop,Array,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,situational,Hide internal data?,Encapsulation,Inheritance,Polymorphism,Abstraction,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,situational,Reuse parent class code?,Inheritance,Encapsulation,Abstraction,Polymorphism,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,situational,Method behaves differently by type?,Polymorphism,Encapsulation,Inheritance,Abstraction,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,situational,Hide implementation details?,Abstraction,Encapsulation,Inheritance,Polymorphism,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,situational,Initialize a new object?,Constructor,Destructor,Method,Class,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,situational,Free object memory?,Destructor,Constructor,Method,Class,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,situational,Achieve runtime polymorphism?,Override,Overload,Encapsulate,Abstract,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,situational,Achieve compile-time polymorphism?,Overload,Override,Inherit,Abstract,A,medium,1.3,0.4,0.1
+Object-Oriented Programming,situational,Restrict data access?,Private,Public,Static,Final,A,easy,1.1,-1.0,0.2
+Object-Oriented Programming,situational,Model object relationship?,Composition,Inheritance,Polymorphism,Abstraction,A,medium,1.3,0.4,0.1
