@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion as Motion } from 'framer-motion';
+import AppIcon from "@/components/AppIcon";
 
 export default function SessionsComingSoon() {
   return (
@@ -14,7 +15,7 @@ export default function SessionsComingSoon() {
         className="clay-card rounded-[32px] p-10 max-w-2xl w-full"
       >
         <div className="mx-auto w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-          <span className="material-symbols-outlined text-5xl text-primary">video_call</span>
+          <AppIcon name="video_call" className="h-12 w-12 text-primary" />
         </div>
         
         <h1 className="text-4xl font-extrabold text-on-surface mb-4">
@@ -32,17 +33,17 @@ export default function SessionsComingSoon() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10 text-left">
           <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/10">
-            <span className="material-symbols-outlined text-primary mb-2">group</span>
+            <AppIcon name="group" className="mb-2 h-5 w-5 text-primary" />
             <h3 className="font-bold text-sm text-on-surface">1-on-1 Coaching</h3>
             <p className="text-xs text-on-surface-variant mt-1">Direct access to experts</p>
           </div>
           <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/10">
-            <span className="material-symbols-outlined text-primary mb-2">event_available</span>
+            <AppIcon name="event_available" className="mb-2 h-5 w-5 text-primary" />
             <h3 className="font-bold text-sm text-on-surface">Easy Scheduling</h3>
             <p className="text-xs text-on-surface-variant mt-1">Book slots in seconds</p>
           </div>
           <div className="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/10">
-            <span className="material-symbols-outlined text-primary mb-2">movie</span>
+            <AppIcon name="movie" className="mb-2 h-5 w-5 text-primary" />
             <h3 className="font-bold text-sm text-on-surface">Cloud Recordings</h3>
             <p className="text-xs text-on-surface-variant mt-1">Revisit previous sessions</p>
           </div>
@@ -52,7 +53,7 @@ export default function SessionsComingSoon() {
           href="/dashboard?refresh=1"
           className="inline-flex items-center gap-2 rounded-full bg-surface-container-high px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-on-surface hover:bg-surface-container-highest transition-colors"
         >
-          <span className="material-symbols-outlined text-lg">arrow_back</span>
+          <AppIcon name="arrow_back" className="h-4 w-4" />
           Back to Dashboard
         </Link>
       </Motion.div>

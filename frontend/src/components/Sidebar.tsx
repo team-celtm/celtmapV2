@@ -1,11 +1,13 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion as Motion } from "framer-motion";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/AuthContext";
 import CeltmLogo from "./CeltmLogo";
+import AppIcon from "./AppIcon";
 
 export default function Sidebar({
   isExpanded = false,
@@ -45,10 +47,13 @@ export default function Sidebar({
         >
           <div className="relative shrink-0">
             <div className={`rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-0.5 shadow-lg group-hover:scale-110 transition-transform duration-500 ${isExpanded ? 'w-10 h-10' : 'w-12 h-12'}`}>
-                <img 
+                <Image
                   className="w-full h-full rounded-[10px] object-cover bg-surface" 
                   alt={user?.name || "CELTM user"} 
                   src={user?.avatar || "https://ui-avatars.com/api/?name=CELTM+User&background=6366f1&color=fff"}
+                  width={48}
+                  height={48}
+                  unoptimized
                   onError={(event) => {
                     event.currentTarget.onerror = null;
                     event.currentTarget.src = "https://ui-avatars.com/api/?name=CELTM+User&background=6366f1&color=fff";
@@ -70,9 +75,7 @@ export default function Sidebar({
           onClick={onToggle}
           className="w-10 h-10 rounded-full bg-slate-100 dark:bg-[#1c1b1b] text-slate-500 dark:text-slate-300 hover:text-primary transition-all duration-300 flex items-center justify-center group/toggle hover:scale-110 active:scale-95 shadow-sm dark:shadow-[8px_8px_24px_#0a0a0a,-2px_-2px_8px_rgba(255,255,255,0.02)] border border-transparent dark:border-transparent"
         >
-          <span className="material-symbols-outlined text-xl transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-            side_navigation
-          </span>
+          <AppIcon name={isExpanded ? "panel_left_close" : "panel_left_open"} className="h-5 w-5 transition-transform duration-300" />
         </button>
       </div>
 
@@ -81,9 +84,9 @@ export default function Sidebar({
             { href: "/dashboard", icon: "grid_view", label: "Dashboard" },
             { href: "/skill-profile", icon: "psychology", label: "Skill Profile" },
             { href: "/hidden-skills", icon: "insights", label: "Hidden Skills" },
-            { href: "/learning-paths", icon: "school", label: "Learning Path" },
             { href: "/assessments", icon: "fact_check", label: "Assessments" },
-        ].map((item, idx) => {
+            { href: "/career-aim", icon: "route", label: "Career Aim" },
+        ].map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
@@ -109,7 +112,7 @@ export default function Sidebar({
               
               <div className={`flex items-center gap-3 transition-all duration-500 ${isExpanded ? 'px-6 w-full' : 'w-12 h-12 justify-center'}`}>
                 <div className="w-10 h-10 flex items-center justify-center shrink-0 relative z-10 transition-transform duration-300 group-hover:scale-110">
-                    <span className="material-symbols-outlined text-xl" >{item.icon}</span> 
+                    <AppIcon name={item.icon} className="h-5 w-5" />
                 </div>
                 {isExpanded && (
                     <span className="font-bold text-[11px] uppercase tracking-[0.1em] relative z-10 whitespace-nowrap">{item.label}</span>
@@ -146,7 +149,7 @@ export default function Sidebar({
             >
               <div className={`flex items-center transition-all duration-500 ${isExpanded ? 'px-6 w-full gap-3' : 'w-12 h-12 justify-center'}`}>
                   <div className="w-10 h-10 flex items-center justify-center shrink-0 relative z-10 p-2">
-                      <span className={`material-symbols-outlined text-xl ${item.color || ''}`}>{item.icon}</span>
+                      <AppIcon name={item.icon} className={`h-5 w-5 ${item.color || ''}`} />
                   </div>
                   {isExpanded && (
                       <span className="font-bold text-[11px] uppercase tracking-widest relative z-10 whitespace-nowrap">{item.label}</span>

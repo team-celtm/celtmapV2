@@ -1,0 +1,2 @@
+-- The Phase 1 backend creates this SQLite schema automatically on startup.
+-- See backend/app/database.py for the executable schema and seeded question bank.

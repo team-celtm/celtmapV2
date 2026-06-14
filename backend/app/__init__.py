@@ -1,1 +1,1 @@
-"""CELTM backend application package."""
+"""CELTM Phase 1 backend."""

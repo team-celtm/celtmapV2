@@ -1,246 +1,37 @@
-# CELTM Web Run Instructions
+# CELTM Phase 1 Runbook
 
-These instructions are written for Windows PowerShell and match the current
-project structure in this repository.
+This checkout uses the lightweight Phase 1 runtime.
 
-## 1. Prerequisites
+## Architecture
 
-Install:
+- Backend: FastAPI.
+- Frontend: Next.js.
+- Local database: SQLite at `backend\data\celtm_phase1.sqlite3`.
+- Hosted database: Postgres/Supabase Postgres through `DATABASE_URL` or
+  `SUPABASE_DATABASE_URL`.
+- Hosted uploads: private Supabase Storage with signed URLs.
+- Hosted rate limiting: Redis-backed shared counters through `RATE_LIMIT_BACKEND=redis`.
+- Student auth: Supabase Auth token validation.
+- Institution/super-admin auth: backend JWT.
+- Question bank: Supabase-backed question rows for live assessments.
+- AI usage: resume, certificate, written-response, career-aim, and chat analysis
+  when `OPENAI_API_KEY` is configured.
+- Removed from current backend runtime: RAG, Celery, Neo4j, and heavy sync
+  workers. Redis is used only when hosted shared rate limiting is enabled.
 
-- Git
-- Python 3.11 or newer
-- Node.js 20 or newer
-- npm
-- Docker Desktop, only if you want Redis or backend services through Docker
+## Local Startup
 
-External services required by the full product:
-
-- Supabase project with Auth, Postgres, Storage, and pgvector enabled
-- Redis for Celery in non-eager mode
-- Neo4j for the derived skill graph
-- OpenAI API key for RAG, copilot, written scoring, and AI evaluation
-
-## 2. Backend Environment
-
-From the repository root:
-
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-Copy-Item .env.example .env
-```
-
-Fill `backend/.env`.
-
-Core values:
-
-```env
-APP_ENV=development
-APP_DEBUG=true
-FRONTEND_ORIGIN=http://127.0.0.1:3000,http://localhost:3000
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-SUPABASE_ANON_KEY=
-SUPABASE_DB_CONNECTION_STRING=
-OPENAI_API_KEY=
-REDIS_URL=redis://localhost:6379/0
-CELTMIND_DIR=../CELTMIND
-```
-
-Optional compatibility names accepted by the backend:
-
-- `SUPABASE_SECRET_KEY` can stand in for `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_PUBLISHABLE_KEY` can stand in for `SUPABASE_ANON_KEY`
-- `SUPABASE_KEY` can also be used as a legacy service-key fallback
-
-Graph and admin values:
-
-```env
-NEO4J_URI=
-NEO4J_USER=
-NEO4J_PASSWORD=
-ADMIN_OVERRIDE_TOKEN=
-ADMIN_USER=admin@celtm.com
-ADMIN_PASS=admin123
-ADMIN_GATEWAY_CODE=CELTM2026
-```
-
-## 3. Supabase Setup
-
-Apply the main schema in Supabase SQL editor or through your normal database
-migration workflow:
-
-```text
-backend/sql/supabase_schema.sql
-```
-
-Use reset or repair SQL files only when you intentionally want to rebuild or fix
-an existing database:
-
-```text
-backend/sql/reset_schema.sql
-backend/sql/repair_schema.sql
-backend/sql/patch_schema_v2.sql
-backend/sql/fix_missing_tables.sql
-```
-
-If `SUPABASE_DB_CONNECTION_STRING` is configured, this script can apply schema
-work and ingest local data:
-
-```powershell
-cd backend
-python scripts/bootstrap_supabase.py
-```
-
-Make sure the storage buckets named by these env values exist:
-
-```env
-PROFILE_BUCKET=profile-assets
-ARTIFACT_BUCKET=career-artifacts
-```
-
-## 4. CELTMIND Data Ingestion
-
-The local CSV source folder is `CELTMIND/`. The default backend value
-`CELTMIND_DIR=../CELTMIND` assumes commands are run from `backend/`.
-
-Ingest MCQ/CELTMIND data:
-
-```powershell
-cd backend
-python scripts/ingest_mcq.py
-```
-
-Verify the local CSV set against Supabase:
-
-```powershell
-cd backend
-python scripts/check_celtmind_supabase.py
-```
-
-For hosted deployments that do not mount the CSV folder, set:
-
-```env
-CELTMIND_SYNC_ENABLED=false
-```
-
-## 5. Frontend Environment
-
-Install dependencies:
-
-```powershell
-cd frontend
-npm install
-```
-
-Create `frontend/.env.local` manually if you are not using `run-local.ps1`:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api/v1
-```
-
-`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is accepted as a fallback for
-`NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-
-The current frontend is Next.js, not Vite. The old Vite `USE_MOCKS` switch is
-not part of the current `frontend/src/lib/api.ts` path; the frontend calls the
-backend selected by `NEXT_PUBLIC_API_BASE_URL`.
-
-## 6. Recommended Local Startup
-
-From the repository root:
+From the project root:
 
 ```powershell
 .\run-local.ps1
 ```
 
-The script:
-
-- stops stale local backend/frontend processes on ports 8000 and 3000
-- reads `backend/.env`
-- writes `frontend/.env.local` from backend Supabase values
-- starts FastAPI at `http://127.0.0.1:8000`
-- starts Next.js at `http://127.0.0.1:3000`
-- uses eager/background fallback mode when Redis is local or not configured
-
-Keep the two PowerShell windows open while developing.
-
-## 7. Manual Local Startup
-
-Start Redis if you want real Celery processing:
-
-```powershell
-cd backend
-docker compose up redis -d
-```
-
-Start the API:
-
-```powershell
-cd backend
-.\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir app
-```
-
-Start the Celery worker on Windows:
-
-```powershell
-cd backend
-celery -A app.tasks.celery_app:celery_app worker -l info -P solo
-```
-
-Start Celery beat:
-
-```powershell
-cd backend
-celery -A app.tasks.celery_app:celery_app beat -l info
-```
-
-Start the frontend:
-
-```powershell
-cd frontend
-npm run dev
-```
-
 Open:
 
 ```text
-http://127.0.0.1:3000
+http://127.0.0.1:3000/login
 ```
-
-## 8. Docker Backend
-
-Backend Docker support is under `backend/`.
-
-```powershell
-cd backend
-docker compose up --build
-```
-
-This can start the API, Celery worker, Celery beat, and Redis. Supabase, Neo4j,
-and external AI providers still need to exist separately.
-
-## 9. Useful URLs
-
-Backend:
-
-- Health: `http://127.0.0.1:8000/health`
-- Metrics: `http://127.0.0.1:8000/system/metrics`
-- Swagger UI: `http://127.0.0.1:8000/docs`
-- OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
-
-Frontend:
-
-- App: `http://127.0.0.1:3000`
-- Login: `http://127.0.0.1:3000/login`
-- Dashboard: `http://127.0.0.1:3000/dashboard`
-- Assessments: `http://127.0.0.1:3000/assessments`
-
-## 10. Verification Checklist
 
 Backend health:
 
@@ -248,119 +39,156 @@ Backend health:
 Invoke-RestMethod http://127.0.0.1:8000/health
 ```
 
-Expected response shape:
+Logs:
 
-```json
-{
-  "status": "ok",
-  "services": {
-    "supabase": true,
-    "redis": false,
-    "neo4j": false,
-    "worker": false
-  },
-  "timestamp": "..."
-}
+```text
+backend\dev-backend.out.log
+frontend\dev-frontend.out.log
 ```
 
-Service booleans depend on your local credentials and whether Redis/Neo4j are
-running. The API can still respond with `status: ok` while optional services are
-offline in development.
-
-Backend tests:
+## First-Time Setup
 
 ```powershell
 cd backend
-python -m pytest app/tests
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-Frontend checks:
+Edit `backend\.env`, then install frontend dependencies:
+
+```powershell
+cd ..\frontend
+npm install
+```
+
+## Local Default Super Admin
+
+Unless overridden in `backend\.env`:
+
+```text
+Email: admin@celtm.com
+Password: admin123
+Gateway code: CELTM2026
+```
+
+These defaults are for local development only. Hosted mode blocks them when
+`APP_ENV=production`, `prod`, or `hosted`.
+
+Use the Institution login tab for both super admin and institution heads.
+
+## Student Flow
+
+1. Student signs up or logs in with Supabase Auth.
+2. Student selects institute and department from backend-managed dropdowns.
+3. Login opens the dashboard.
+4. Dashboard prompts for resume upload when no resume analysis exists.
+5. Resume analysis generates match score, keywords, red flags, strengths,
+   weaknesses, and institute help.
+6. Assessments improve readiness through server-side scoring.
+7. Career Aim saves AI-generated or rule-assisted direction for desired roles.
+
+## Institution Flow
+
+1. CELTM super admin creates institutes, departments, and head/HOD accounts.
+2. Institution heads log in through the Institution tab.
+3. They can search/rank students from their allowed institute/department scope.
+4. Each student popup shows readiness, strong points, weak points, and how the
+   institute can help.
+5. Admins can export CSV/PDF reports and create scheduled assignments.
+
+## Manual Backend
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+## Manual Frontend
 
 ```powershell
 cd frontend
+npm install
+npm run dev
+```
+
+## Hosted Checklist
+
+Before public hosting:
+
+1. Set `APP_ENV=production`.
+2. Set `FRONTEND_ORIGIN` to the real HTTPS frontend origin only.
+3. Set `DATABASE_URL` or `SUPABASE_DATABASE_URL`; do not use SQLite.
+4. Set `STORAGE_BACKEND=supabase`, `SUPABASE_STORAGE_BUCKET`, and
+   `ALLOW_LOCAL_FILE_SERVING=false`.
+5. Replace `ADMIN_USER`, `ADMIN_PASS`, `ADMIN_GATEWAY_CODE`, and set a strong
+   `CELTM_JWT_SECRET`.
+6. Set `MONITORING_TOKEN`.
+7. Set `RATE_LIMIT_BACKEND=redis` and `REDIS_URL`.
+8. Enable admin MFA with `ADMIN_MFA_REQUIRED=true` and `ADMIN_MFA_SECRET`, then
+   enroll per-admin MFA from the admin console.
+9. Enable upload scanning with `UPLOAD_SCAN_ENABLED=true` and a ClamAV service
+   before broad public traffic.
+10. Run `backend\scripts\migrate_runtime.py` against the hosted database.
+11. Configure `NEXT_PUBLIC_API_BASE_URL` to the hosted backend `/api/v1`.
+12. Run `npm audit --omit=dev --audit-level=moderate`.
+13. Configure provider-level HTTPS, WAF/body-size limits, external monitoring,
+    managed database backups, and a tested restore.
+
+The codebase now includes app-level rate limits, upload validation, private
+storage support, signed URLs, SSRF hardening, security headers, audit logs,
+monitoring endpoints, admin token revocation, and admin MFA hooks. The hosted
+environment must still be configured to use them.
+
+Use [deploy/hosting.env.example](deploy/hosting.env.example) as the hosted
+environment template and [deploy/nginx.conf](deploy/nginx.conf) as an edge-limit
+starter.
+
+Full analysis: [docs/HOSTING_SECURITY_REVIEW.md](docs/HOSTING_SECURITY_REVIEW.md).
+
+## Data
+
+Local runtime files:
+
+```text
+backend\data\celtm_phase1.sqlite3
+backend\data\uploads
+```
+
+These are ignored by Git. Delete them only if you intentionally want to reset
+local Phase 1 app data.
+
+Hosted backup:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe scripts\backup_runtime_data.py --output data\backups\celtm-runtime-backup.json
+.\.venv\Scripts\python.exe scripts\backup_runtime_data.py --restore --input data\backups\celtm-runtime-backup.json
+```
+
+Hosted migration, health check, and secret generation:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe scripts\migrate_runtime.py
+.\.venv\Scripts\python.exe scripts\check_hosted_health.py --base-url https://your-backend-domain --monitoring-token $env:MONITORING_TOKEN
+.\.venv\Scripts\python.exe scripts\generate_hosted_secrets.py
+```
+
+## Verification
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m compileall app
+.\.venv\Scripts\python.exe -m bandit -r app -f txt
+```
+
+```powershell
+cd frontend
+npm run test:logic
 npm run lint
+npx tsc --noEmit
 npm run build
+npm audit --omit=dev
 ```
-
-Browser checks:
-
-- Login page opens first for unauthenticated users.
-- Supabase login succeeds with a confirmed account.
-- Dashboard loads without a backend unavailable message.
-- Assessments hub opens and can start MCQ, situational, and written flows.
-- Profile/settings updates persist after refresh.
-
-## 11. Common Problems
-
-### Frontend says Supabase is not configured
-
-Check `frontend/.env.local`:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-```
-
-Restart `npm run dev` after changing env files.
-
-### Frontend cannot reach backend
-
-Check:
-
-- backend is running at `http://127.0.0.1:8000`
-- `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api/v1`
-- `FRONTEND_ORIGIN` includes `http://127.0.0.1:3000`
-
-Prefer `127.0.0.1` for both backend and frontend during local checks.
-
-### Supabase calls fail
-
-Check:
-
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY`
-- schema from `backend/sql/supabase_schema.sql`
-- storage buckets for profile and career artifacts
-- `SUPABASE_DB_CONNECTION_STRING` if running bootstrap or direct SQL scripts
-
-### Celery worker does not process jobs
-
-Check:
-
-- Redis is running and matches `REDIS_URL`
-- worker is started with `-P solo` on Windows
-- beat is started if scheduled jobs are required
-- `CELERY_EAGER_MODE=false` for real Redis/Celery processing
-
-For local development without Redis, use:
-
-```env
-REDIS_ENABLED=false
-REDIS_FAIL_OPEN=true
-CELERY_EAGER_MODE=true
-```
-
-### CELTMIND ingestion finds no files
-
-Check:
-
-- `CELTMIND/` exists at the repository root
-- commands are run from `backend/`
-- `CELTMIND_DIR=../CELTMIND`
-
-### Enhanced RAG routes fail on startup
-
-Enhanced RAG is registered from `backend/enhanced_rag_integration.py`. Run the
-API from `backend/` so that file is importable, and install all backend
-requirements before starting the server.
-
-## 12. GitHub Safety
-
-Do not commit:
-
-- `.env` or `.env.*`
-- generated output under `output/`
-- local screenshots from Playwright/debug runs
-- scratch scripts containing one-off credentials or machine-specific data
-
-The root `.gitignore` is configured for these local files.

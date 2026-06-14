@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CELTM Frontend
 
-## Getting Started
+The frontend is a Next.js App Router application for the CELTM student,
+institution, and admin web experience.
 
-First, run the development server:
+## Main Pages
 
-```bash
+- `/`: public landing page.
+- `/login`: student Supabase login/sign-up and institution/admin login.
+- `/onboarding`: student institution and profile setup.
+- `/admin`: super-admin and institution-head console.
+- Dashboard shell:
+  - `/dashboard`
+  - `/assessments`
+  - `/assessments/[subjectId]`
+  - `/assessments/quiz`
+  - `/assessments/written-protocol`
+  - `/career-aim`
+  - `/competency-map`
+  - `/hidden-skills`
+  - `/interview-console`
+  - `/learning-paths`
+  - `/sessions`
+  - `/settings`
+  - `/skill-profile`
+- `/assessment`: standalone assessment surface kept for compatibility.
+
+## Local Setup
+
+```powershell
+cd frontend
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The local dev server binds to `http://127.0.0.1:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+When using `..\run-local.ps1`, `frontend/.env.local` is generated from
+`backend/.env` if Supabase values are present.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Required Environment
 
-## Learn More
+```env
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api/v1
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-or-publishable-key
+```
 
-To learn more about Next.js, take a look at the following resources:
+For hosted builds, `NEXT_PUBLIC_API_BASE_URL` must point to the hosted backend
+`/api/v1` base path. The API client intentionally throws during module load when
+the API base URL is missing.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Hosted Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Configure only HTTPS API and Supabase URLs.
+- Keep admin JWTs in session storage only as a short-lived browser session. Treat
+  XSS prevention as critical because bearer tokens are readable by client-side
+  JavaScript.
+- Production builds set CSP, HSTS, frame protection, content-type protection,
+  referrer policy, and permissions policy through `next.config.ts`.
+- `next.config.ts` allows localhost image hosts only outside production builds.
+- Re-run `npm audit --omit=dev --audit-level=moderate` before release. The
+  current production audit baseline is clean after upgrading Next and related
+  packages.
+- The institution/admin login form supports an optional MFA code. Hosted backend
+  deployments can require it with `ADMIN_MFA_REQUIRED=true`.
+- The admin console includes MFA enrollment, verification, rotation, and disable
+  controls backed by `/api/v1/admin/mfa`.
 
-## Deploy on Vercel
+## Checks
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```powershell
+cd frontend
+npm run test:logic
+npm run lint
+npx tsc --noEmit
+npm run build
+npm audit --omit=dev --audit-level=moderate
+```

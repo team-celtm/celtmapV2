@@ -27,6 +27,7 @@ export function ExamInsightModal({ entry, onClose }: ExamInsightModalProps) {
   const plagiarism = entry.plagiarism;
   const questions: MCQDetailedFeedback[] = entry.detailed_feedback ?? [];
   const hasQuestions = questions.length > 0;
+  const readinessComponents = entry.readiness_components ?? [];
 
   const correctCount = questions.filter((q) => q.is_correct).length;
   const wrongCount = questions.length - correctCount;
@@ -99,15 +100,30 @@ export function ExamInsightModal({ entry, onClose }: ExamInsightModalProps) {
             </div>
           </div>
           <div className="rounded-3xl bg-surface p-5 shadow-inner ring-1 ring-outline-variant/5">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">Readiness</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">Current readiness</p>
             <div className="mt-3 flex items-baseline gap-2">
               <span className="text-5xl font-extrabold tracking-tighter text-on-surface">
                 {entry.readiness_score != null ? formatPercent(entry.readiness_score) : "--"}
               </span>
-              <span className="text-xs font-black uppercase tracking-widest text-primary">Live</span>
+              <span className="text-xs font-black uppercase tracking-widest text-primary">Global</span>
             </div>
           </div>
         </div>
+        {readinessComponents.length ? (
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            {readinessComponents.map((component) => (
+              <div key={component.key} className="rounded-2xl bg-surface p-4 ring-1 ring-outline-variant/5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">{component.label}</p>
+                <div className="mt-2 flex items-baseline justify-between gap-2">
+                  <span className="text-xl font-black text-on-surface">{formatPercent(component.score)}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">
+                    {Math.round(component.effective_weight * 100)}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         {/* Tabs */}
         <div className="mt-8 flex gap-2 border-b border-outline-variant/10 pb-0">

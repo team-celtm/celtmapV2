@@ -2,20 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion as Motion, useReducedMotion } from 'framer-motion';
 import AppIcon from '../components/AppIcon';
 import CeltmLogo from '../components/CeltmLogo';
-import { useTheme } from '../contexts/ThemeContext';
 
-const engineer = '/landing/engineer.png';
-const scientist = '/landing/scientist.png';
-const fullstack = '/landing/fullstack.png';
-const product = '/landing/product.png';
-const architect = '/landing/architect.png';
-const backend = '/landing/backend.png';
-const designer = '/landing/designer.png';
-const security = '/landing/security.png';
-const marketing = '/landing/marketing.png';
 const featurePerson1 = '/landing/feature-person1.png';
 const featurePerson2 = '/landing/feature-person2.png';
 const course1 = '/landing/course1.jpg';
@@ -164,9 +155,12 @@ const ProfileMarquee = ({ profiles }: { profiles: typeof heroProfiles }) => (
           key={i} 
           className="relative h-72 w-96 shrink-0 overflow-hidden rounded-[2.5rem] bg-white shadow-xl border border-slate-100 dark:border-transparent group transition-transform hover:scale-[1.05] hover:z-20 cursor-default"
         >
-          <img 
+          <Image
             src={profile.image} 
             alt={profile.name} 
+            fill
+            sizes="384px"
+            unoptimized
             className="h-full w-full object-cover transition-all duration-500 group-hover:scale-110"
           />
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-6 text-white group-hover:from-black/90 transition-all">
@@ -181,7 +175,6 @@ const ProfileMarquee = ({ profiles }: { profiles: typeof heroProfiles }) => (
 );
 
 export default function LandingPage() {
-  const { theme, toggleTheme } = useTheme();
   const reduceMotion = useReducedMotion();
   const [isScrolled, setIsScrolled] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
@@ -434,12 +427,13 @@ export default function LandingPage() {
                   whileHover={reduceMotion ? undefined : { y: -8 }}
                   className="overflow-hidden rounded-[2rem] bg-[#15131f] text-white shadow-[0_24px_56px_rgba(20,16,31,0.18)]"
                 >
-                  <div className="h-64 overflow-hidden">
-                    <img
+                  <div className="relative h-64 overflow-hidden">
+                    <Image
                       src={card.image}
                       alt={card.title}
+                      fill
+                      sizes="(min-width: 1024px) 33vw, 100vw"
                       className="h-full w-full object-cover transition duration-500 hover:scale-[1.04]"
-                      loading="lazy"
                     />
                   </div>
                   <div className="space-y-4 p-6">
@@ -484,11 +478,12 @@ export default function LandingPage() {
                   <div
                     className={`relative h-[27rem] w-full max-w-[28rem] overflow-hidden rounded-[2.4rem] ${row.imageTone} shadow-[0_22px_56px_rgba(116,96,85,0.14)]`}
                   >
-                    <img
+                    <Image
                       src={row.image}
                       alt={row.title}
+                      fill
+                      sizes="(min-width: 768px) 448px, 100vw"
                       className="h-full w-full object-cover object-top"
-                      loading="lazy"
                     />
                   </div>
                 </div>

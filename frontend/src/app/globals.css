@@ -1,7 +1,27 @@
 
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "liga";
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+}
 
 @layer base {
   :root {
@@ -127,6 +147,27 @@ body {
     font-family: var(--font-manrope), sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+main,
+section,
+article,
+header,
+nav,
+aside,
+div,
+form {
+    min-width: 0;
+}
+
+img,
+svg,
+video,
+canvas,
+table {
+    max-width: 100%;
 }
 
 .clay-surface, .clay-card {
@@ -361,4 +402,3 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgba(123, 114, 242, 0.2) transparent;
 }
-

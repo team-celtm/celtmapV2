@@ -77,38 +77,41 @@ export default function SubjectHubPage() {
     {
       type: "MCQ",
       label: "Foundation Check",
-      description: "Quick-fire conceptual validation with instant feedback on core principles.",
+      description: `Quick-fire conceptual validation for ${subject.title} with instant feedback.`,
       icon: "M",
       color: "bg-blue-500/10 text-blue-500",
       href: buildAssessmentQuizHref({ 
         title: subject.title, 
         skillId: subject.skill_id, 
         skillRequestId: subject.skill_request_id 
-      }, "MCQ")
+      }, "MCQ"),
+      isEnabled: subject.availability?.mcq ?? subject.is_available,
     },
     {
       type: "Situational",
-      label: "Deployment Analysis",
-      description: "Scenario-based evaluation focusing on practical decision making and problem solving.",
+      label: "Situational Practice",
+      description: `Scenario-based ${subject.title} decisions with practical reasoning checks.`,
       icon: "S",
       color: "bg-teal-500/10 text-teal-500",
       href: buildAssessmentQuizHref({ 
         title: subject.title, 
         skillId: subject.skill_id, 
         skillRequestId: subject.skill_request_id 
-      }, "SITUATIONAL")
+      }, "SITUATIONAL"),
+      isEnabled: subject.availability?.situational ?? false,
     },
     {
       type: "Written",
-      label: "Technical Protocol",
-      description: "Deep-dive descriptive verification. AI-graded review of architecture and logic.",
+      label: "Written Analysis",
+      description: `Structured written verification for ${subject.title}, graded for relevance and reasoning.`,
       icon: "W",
       color: "bg-purple-500/10 text-purple-500",
       href: buildWrittenAssessmentHref({ 
         title: subject.title, 
         skillId: subject.skill_id, 
         skillRequestId: subject.skill_request_id 
-      })
+      }),
+      isEnabled: subject.availability?.written ?? false,
     }
   ];
 
@@ -120,13 +123,13 @@ export default function SubjectHubPage() {
             href="/assessments" 
             className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-colors"
           >
-            ← Global Hub
+            Back to Subject Hub
           </Link>
           <div className="flex items-center gap-3">
              <span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
               {subject.source}
             </span>
-             <span className="text-[10px] font-extrabold text-on-surface-variant">{subject.resource_count} Connected Docs</span>
+             <span className="text-[10px] font-extrabold text-on-surface-variant">{subject.resource_count} live questions</span>
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight text-on-surface md:text-5xl">{subject.title}</h1>
           <p className="max-w-2xl text-lg text-on-surface-variant leading-relaxed">
@@ -177,7 +180,10 @@ export default function SubjectHubPage() {
             <Link
               key={card.type}
               href={card.href}
-              className="lift-card flex flex-col rounded-[32px] border border-outline-variant/12 dark:border-transparent bg-surface-container-low p-8 transition hover:border-primary/30 group"
+              aria-disabled={!card.isEnabled}
+              className={`lift-card flex flex-col rounded-[32px] border border-outline-variant/12 dark:border-transparent bg-surface-container-low p-8 transition group ${
+                card.isEnabled ? "hover:border-primary/30" : "pointer-events-none opacity-50"
+              }`}
             >
               <div className={`mb-6 flex h-14 w-14 items-center justify-center rounded-2xl text-xl font-black ${card.color}`}>
                 {card.icon}
@@ -190,7 +196,7 @@ export default function SubjectHubPage() {
               </p>
               <div className="mt-8 flex items-center justify-between border-t border-outline-variant/5 pt-4">
                 <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant group-hover:text-primary transition-colors">
-                  Begin Track →
+                  {card.isEnabled ? "Begin Track ->" : "Not available"}
                 </span>
                 <span className="rounded-full bg-surface-container px-2 py-1 text-[9px] font-bold text-on-surface-variant">
                   {card.type}
@@ -218,7 +224,7 @@ export default function SubjectHubPage() {
               </div>
               <div className="rounded-2xl bg-surface px-4 py-3">
                 <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">Documentation</p>
-                <p className="mt-1 text-sm font-bold text-on-surface">{subject.resource_count} Curated Artifacts</p>
+                <p className="mt-1 text-sm font-bold text-on-surface">{subject.resource_count} live questions</p>
               </div>
             </div>
           </div>
@@ -226,10 +232,10 @@ export default function SubjectHubPage() {
           <div className="rounded-3xl border border-outline-variant/12 p-6">
              <h3 className="text-sm font-bold text-on-surface mb-4">Preparation Insights</h3>
              <ul className="space-y-3 text-sm text-on-surface-variant list-disc pl-4">
-               <li>Foundation check verifies your grasp of theoretical concepts.</li>
-               <li>Situational assessment measures how well you apply these skills in real-world infrastructure scenarios.</li>
-               <li>Technical protocol requires descriptive explaining of architectures and trade-offs.</li>
-               <li>Successful completion across all three will significantly boost your role-fit readiness.</li>
+               <li>Foundation check verifies your grasp of {subject.title} concepts.</li>
+               <li>Situational practice measures how well you apply {subject.title} in practical choices.</li>
+               <li>Written analysis requires clear explanation, evidence, risk, and next action.</li>
+               <li>Repeated attempts build a subject-wise trend instead of a broad capability guess.</li>
              </ul>
           </div>
         </div>

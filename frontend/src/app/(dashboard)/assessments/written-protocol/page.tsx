@@ -13,41 +13,14 @@ import type {
 import { formatDateTime, formatPercent, formatRelativeTime, toTitleCase } from "@/lib/celtm";
 
 type Mode = "choose" | "editor" | "upload";
-type EvaluatorMode = "teacher" | "liberal_ai" | "strict_ai";
 type CompletionSummary = {
   session: WrittenAssessmentRead;
   roleFit: RoleFitRead | null;
 };
 
-const evaluatorModes: Array<{
-  value: EvaluatorMode;
-  label: string;
-  description: string;
-}> = [
-  {
-    value: "teacher",
-    label: "Teacher",
-    description: "Balanced marking focused on clarity, correctness, and reasoning.",
-  },
-  {
-    value: "liberal_ai",
-    label: "Liberal AI",
-    description: "Gives more credit for partial correctness and promising structure.",
-  },
-  {
-    value: "strict_ai",
-    label: "Strict AI",
-    description: "Penalizes shallow detail and weak validation more aggressively.",
-  },
-];
-
-function resolveEvaluatorMode(session: WrittenAssessmentRead | null): EvaluatorMode {
-  const stored = session?.metadata?.evaluator_mode;
-  if (stored === "liberal_ai" || stored === "strict_ai" || stored === "teacher") {
-    return stored;
-  }
-  return "teacher";
-}
+const CENTRAL_EVALUATOR_MODE = "central_unbiased_ai";
+const CENTRAL_EVALUATOR_LABEL = "Central AI";
+const MIN_SUBMIT_CHARACTERS = 40;
 
 function readStringList(value: unknown): string[] {
   if (!Array.isArray(value)) {
@@ -82,21 +55,17 @@ function WrittenProtocolPageContent() {
   const searchParams = useSearchParams();
   const skillId = searchParams.get("skillId");
   const skillRequestId = searchParams.get("skillRequestId");
+  const assignmentId = searchParams.get("assignmentId");
   const title = searchParams.get("title") ?? "Written Case Assessment";
-  const initialEvaluator = searchParams.get("evaluatorMode");
 
   const [mode, setMode] = useState<Mode>("choose");
-  const [evaluatorMode, setEvaluatorMode] = useState<EvaluatorMode>(
-    initialEvaluator === "liberal_ai" || initialEvaluator === "strict_ai"
-      ? initialEvaluator
-      : "teacher",
-  );
   const [session, setSession] = useState<WrittenAssessmentRead | null>(null);
   const [submissionText, setSubmissionText] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadedArtifact, setUploadedArtifact] = useState<ArtifactRead | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMode, setLoadingMode] = useState<Exclude<Mode, "choose"> | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,12 +77,6 @@ function WrittenProtocolPageContent() {
   const prompt =
     session?.prompt ??
     `Prepare a concise technical analysis for "${title}" covering root cause, affected surface, remediation, and hardening recommendations.`;
-
-  useEffect(() => {
-    if (session) {
-      setEvaluatorMode(resolveEvaluatorMode(session));
-    }
-  }, [session]);
 
   const persistSubmissionEvent = useEffectEvent((content: string) => {
     void persistSubmission(content, { silent: true });
@@ -236,18 +199,19 @@ function WrittenProtocolPageContent() {
       body: JSON.stringify({
         skill_id: skillId,
         skill_request_id: skillRequestId,
-        evaluator_mode: evaluatorMode,
+        evaluator_mode: CENTRAL_EVALUATOR_MODE,
+        assignment_id: assignmentId,
       }),
     });
     setSession(created);
     setSubmissionText(created.submission_text ?? "");
-    setEvaluatorMode(resolveEvaluatorMode(created));
     return created;
   };
 
   const openMode = async (nextMode: Exclude<Mode, "choose">) => {
     try {
       setIsLoading(true);
+      setLoadingMode(nextMode);
       setError(null);
       const activeSession = await ensureSession();
       if (activeSession.submission_text && !submissionText) {
@@ -262,6 +226,7 @@ function WrittenProtocolPageContent() {
       setError(message);
     } finally {
       setIsLoading(false);
+      setLoadingMode(null);
     }
   };
 
@@ -307,7 +272,7 @@ function WrittenProtocolPageContent() {
           method: "PATCH",
           body: JSON.stringify({
             submission_text: content,
-            evaluator_mode: evaluatorMode,
+            evaluator_mode: CENTRAL_EVALUATOR_MODE,
           }),
         },
       );
@@ -346,7 +311,7 @@ function WrittenProtocolPageContent() {
         clearTimeout(autosaveTimeoutRef.current);
       }
     };
-  }, [mode, session, submissionText, evaluatorMode]);
+  }, [mode, session, submissionText]);
 
   const uploadArtifact = async () => {
     if (!selectedFile) {
@@ -382,9 +347,18 @@ function WrittenProtocolPageContent() {
       let content = submissionText.trim();
 
       if (mode === "upload") {
-        const artifact = await uploadArtifact();
+        if (!selectedFile && notes.trim().length < MIN_SUBMIT_CHARACTERS) {
+          setError("Upload evidence or add at least 40 characters of evaluator notes before submitting.");
+          setIsSubmitting(false);
+          return;
+        }
+        const artifact = selectedFile ? await uploadArtifact() : null;
+        if (selectedFile && !artifact) {
+          setIsSubmitting(false);
+          return;
+        }
         content = [
-          "Uploaded written evidence submitted through CELTM upload flow.",
+          artifact ? "Uploaded written evidence submitted through CELTM upload flow." : "",
           artifact ? `Artifact: ${artifact.file_name}` : "",
           notes.trim(),
         ]
@@ -392,8 +366,8 @@ function WrittenProtocolPageContent() {
           .join("\n\n");
       }
 
-      if (!content || content.trim().length < 20) {
-        setError("Add a detailed written response or upload evidence notes (minimum 20 characters) before submitting.");
+      if (!content || content.trim().length < MIN_SUBMIT_CHARACTERS) {
+        setError(`Add a detailed written response or upload evidence notes (minimum ${MIN_SUBMIT_CHARACTERS} characters) before submitting.`);
         setIsSubmitting(false);
         return;
       }
@@ -404,7 +378,7 @@ function WrittenProtocolPageContent() {
           method: "PATCH",
           body: JSON.stringify({
             submission_text: content,
-            evaluator_mode: evaluatorMode,
+            evaluator_mode: CENTRAL_EVALUATOR_MODE,
           }),
         },
       );
@@ -419,7 +393,6 @@ function WrittenProtocolPageContent() {
       setSession(completed);
       setSubmissionText(completed.submission_text ?? content);
     } catch (caught) {
-      console.error("Written assessment submit failed:", caught);
       const message =
         caught instanceof ApiError
           ? caught.message
@@ -431,7 +404,6 @@ function WrittenProtocolPageContent() {
   };
 
   const statusLabel = session ? toTitleCase(session.status) : "Not started";
-  const activeEvaluator = evaluatorModes.find((item) => item.value === evaluatorMode);
   const evaluationInsights = readStringList(
     session?.metadata?.insights ?? session?.metadata?.strengths,
   );
@@ -440,9 +412,9 @@ function WrittenProtocolPageContent() {
   );
   const evaluationRecommendations = readStringList(session?.metadata?.recommendations);
   const plagiarismReport = readPlagiarismReport(session?.metadata?.plagiarism);
-  const sessionReadinessScore =
-    typeof session?.metadata?.readiness_score === "number"
-      ? session.metadata.readiness_score
+  const sessionWrittenScore =
+    typeof session?.score === "number"
+      ? session.score
       : null;
   const sessionRoleName =
     typeof session?.metadata?.role_name === "string" && session.metadata.role_name.trim().length > 0
@@ -467,8 +439,8 @@ function WrittenProtocolPageContent() {
     ? readPlagiarismReport(completionSummary.session.metadata?.plagiarism)
     : null;
   const completionReadinessScore =
-    completionSummary && typeof completionSummary.session.metadata?.readiness_score === "number"
-      ? completionSummary.session.metadata.readiness_score
+    completionSummary && typeof completionSummary.session.readiness_score === "number"
+      ? completionSummary.session.readiness_score
       : null;
   const completionRoleName =
     completionSummary &&
@@ -476,6 +448,7 @@ function WrittenProtocolPageContent() {
     completionSummary.session.metadata.role_name.trim().length > 0
       ? completionSummary.session.metadata.role_name
       : null;
+  const isEvaluationProcessing = session?.status === "processing";
 
   if (mode === "choose") {
     return (
@@ -490,9 +463,8 @@ function WrittenProtocolPageContent() {
                 {title}
               </h1>
               <p className="mt-3 text-sm leading-7 text-on-surface-variant">
-                Choose how you want to submit the response, then select how the evaluator
-                should grade it. Drafts persist to the backend and final scoring runs
-                asynchronously.
+                Choose how you want to submit the response. A single central evaluator grades
+                the final answer for relevance, reasoning, evidence, and learning-focused gaps.
               </p>
             </div>
 
@@ -501,7 +473,7 @@ function WrittenProtocolPageContent() {
                 { label: "Status", value: statusLabel },
                 {
                   label: "Evaluator",
-                  value: activeEvaluator?.label ?? "Teacher",
+                  value: CENTRAL_EVALUATOR_LABEL,
                 },
                 {
                   label: "Last update",
@@ -535,33 +507,20 @@ function WrittenProtocolPageContent() {
         <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <div className="clay-card rounded-[30px] p-6">
             <h2 className="text-xl font-bold tracking-tight text-on-surface">
-              Evaluation mode
+              Central evaluator
             </h2>
             <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-              This setting changes how the backend evaluates your final answer.
+              CELTM now uses one unbiased written-practice standard. The evaluator is strict
+              about off-topic answers and uploaded evidence, while the feedback stays focused
+              on what to fix next.
             </p>
 
-            <div className="mt-5 space-y-3">
-              {evaluatorModes.map((item) => {
-                const selected = evaluatorMode === item.value;
-                return (
-                  <button
-                    key={item.value}
-                    type="button"
-                    onClick={() => setEvaluatorMode(item.value)}
-                    className={`w-full rounded-3xl border px-4 py-4 text-left transition ${
-                      selected
-                        ? "border-primary/30 bg-primary/10"
-                        : "border-outline-variant/12 dark:border-transparent bg-surface-container-low hover:border-primary/20"
-                    }`}
-                  >
-                    <p className="text-sm font-bold text-on-surface">{item.label}</p>
-                    <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                      {item.description}
-                    </p>
-                  </button>
-                );
-              })}
+            <div className="mt-5 rounded-3xl border border-primary/15 bg-primary/5 p-5">
+              <p className="text-sm font-bold text-on-surface">{CENTRAL_EVALUATOR_LABEL}</p>
+              <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+                Scores only the written answer to the asked prompt. Generic notes, unrelated
+                files, or one-line choices receive minimal credit.
+              </p>
             </div>
           </div>
 
@@ -570,8 +529,7 @@ function WrittenProtocolPageContent() {
               Submission method
             </h2>
             <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-              Keep the old card-based flow: choose the response channel first, then open the
-              assessment workspace.
+              Choose the response channel first, then open the assessment workspace.
             </p>
 
             <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -585,7 +543,9 @@ function WrittenProtocolPageContent() {
                 </p>
                 <h3 className="mt-3 text-xl font-bold text-on-surface">Write inside CELTM</h3>
                 <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                  Use the built-in editor with autosave and final asynchronous scoring.
+                  {isLoading && loadingMode === "editor"
+                    ? "Opening the prompt and draft session..."
+                    : "Use the built-in editor with autosave and final asynchronous scoring."}
                 </p>
               </button>
 
@@ -601,10 +561,26 @@ function WrittenProtocolPageContent() {
                   Upload external evidence
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                  Attach PDF or image-based work, then add notes for the evaluator.
+                  {isLoading && loadingMode === "upload"
+                    ? "Opening the upload workspace..."
+                    : "Attach PDF or image-based work, then add notes for the evaluator."}
                 </p>
               </button>
             </div>
+
+            {isLoading ? (
+              <div className="mt-5 rounded-3xl border border-primary/15 bg-primary/5 p-5">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+                  <div>
+                    <p className="text-sm font-black text-on-surface">Preparing written workspace</p>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-on-surface-variant">
+                      CELTM is selecting a live written prompt and creating your draft session.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             <div className="mt-5 flex justify-start">
               <Link
@@ -620,7 +596,7 @@ function WrittenProtocolPageContent() {
     );
   }
 
-  if (isSubmitting) {
+  if (isSubmitting || isEvaluationProcessing) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background dark:bg-surface-container-lowest px-6">
         <div className="flex flex-col items-center gap-8 text-center">
@@ -641,35 +617,47 @@ function WrittenProtocolPageContent() {
 
           <div className="space-y-2">
             <p className="text-[11px] font-black uppercase tracking-[0.28em] text-primary">
-              Submitting Written Assessment
+              {isEvaluationProcessing ? "Written Assessment Processing" : "Submitting Written Assessment"}
             </p>
             <h2 className="text-2xl font-extrabold tracking-tight text-on-surface">
-              Evaluating your response
+              {isEvaluationProcessing ? "Evaluator is working in the background" : "Starting evaluation"}
             </h2>
             <p className="text-sm text-on-surface-variant max-w-xs leading-6">
-              Your submission is being processed and scored. This may take a few seconds.
+              {isEvaluationProcessing
+                ? "You can wait here. CELTM is polling the saved session and will open the result as soon as scoring completes."
+                : "Your response is being saved and queued for scoring. This should only take a moment."}
             </p>
           </div>
 
           <div className="flex flex-col gap-3 w-full max-w-xs">
-            {["Uploading response", "Running evaluation", "Updating skill profile"].map((step, i) => (
+            {[
+              isEvaluationProcessing ? "Response saved" : "Saving response",
+              isEvaluationProcessing ? "Running written evaluator" : "Starting evaluator",
+              "Updating readiness and insights",
+            ].map((step) => (
               <div
                 key={step}
                 className="flex items-center gap-3 rounded-2xl bg-surface-container-low px-4 py-3"
-                style={{ animation: `fadein 0.4s ease \s both` }}
+                style={{ animation: "fadein 0.4s ease both" }}
               >
-                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: `\s` }} />
+                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
                 <span className="text-xs font-bold text-on-surface-variant">{step}</span>
               </div>
             ))}
           </div>
+
+          {error ? (
+            <div className="w-full max-w-md rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-semibold leading-6 text-red-500">
+              {error}
+            </div>
+          ) : null}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1480px] space-y-6 pb-8">
+    <div className="min-h-screen w-full space-y-6 bg-background px-3 py-3 dark:bg-surface-container-lowest md:px-4 lg:px-6">
       <section className="clay-card rounded-[30px] p-6 md:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
@@ -680,8 +668,8 @@ function WrittenProtocolPageContent() {
               {title}
             </h1>
             <p className="mt-3 text-sm leading-7 text-on-surface-variant">
-              Prompt-driven written validation with autosave, evaluator selection, and async
-              scoring.
+              Prompt-driven written validation with autosave, central AI scoring, and
+              learning-focused analysis.
             </p>
           </div>
 
@@ -714,10 +702,10 @@ function WrittenProtocolPageContent() {
             </Link>
             <button
               onClick={() => void submitProtocol()}
-              disabled={isSubmitting || isLoading}
+              disabled={isSubmitting || isLoading || isEvaluationProcessing}
               className="inline-flex rounded-full bg-primary px-5 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-white disabled:opacity-50"
             >
-              {isSubmitting ? "Submitting..." : "Submit assessment"}
+              {isEvaluationProcessing ? "Processing..." : isSubmitting ? "Submitting..." : "Submit assessment"}
             </button>
           </div>
         </div>
@@ -729,7 +717,7 @@ function WrittenProtocolPageContent() {
         </div>
       ) : null}
 
-      <section className="grid gap-6 xl:grid-cols-[0.78fr_1.22fr]">
+      <section className="grid gap-6 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
         <div className="space-y-6">
           <div className="clay-card rounded-[30px] p-6">
             <h2 className="text-xl font-bold tracking-tight text-on-surface">Prompt</h2>
@@ -742,29 +730,14 @@ function WrittenProtocolPageContent() {
 
           <div className="clay-card rounded-[30px] p-6">
             <h2 className="text-xl font-bold tracking-tight text-on-surface">
-              Evaluator mode
+              Central evaluation
             </h2>
-            <div className="mt-4 space-y-3">
-              {evaluatorModes.map((item) => {
-                const selected = evaluatorMode === item.value;
-                return (
-                  <button
-                    key={item.value}
-                    type="button"
-                    onClick={() => setEvaluatorMode(item.value)}
-                    className={`w-full rounded-3xl border px-4 py-4 text-left transition ${
-                      selected
-                        ? "border-primary/30 bg-primary/10"
-                        : "border-outline-variant/12 dark:border-transparent bg-surface-container-low hover:border-primary/20"
-                    }`}
-                  >
-                    <p className="text-sm font-bold text-on-surface">{item.label}</p>
-                    <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                      {item.description}
-                    </p>
-                  </button>
-                );
-              })}
+            <div className="mt-4 rounded-3xl border border-primary/15 bg-primary/5 p-5">
+              <p className="text-sm font-bold text-on-surface">{CENTRAL_EVALUATOR_LABEL}</p>
+              <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+                One strict-but-fair standard checks the exact written answer. Off-topic uploads,
+                copied metadata, and one-line choices are capped to minimal credit.
+              </p>
             </div>
           </div>
 
@@ -795,8 +768,8 @@ function WrittenProtocolPageContent() {
                     : "No edits yet",
                 },
                 {
-                  label: "Readiness",
-                  value: sessionReadinessScore != null ? formatPercent(sessionReadinessScore) : "Pending",
+                  label: "Written score",
+                  value: sessionWrittenScore != null ? formatPercent(sessionWrittenScore) : "Pending",
                 },
                 {
                   label: "Role fit",
@@ -907,7 +880,7 @@ function WrittenProtocolPageContent() {
           </div>
         </div>
 
-        <div className="clay-card rounded-[30px] p-6">
+        <div className="clay-card flex min-h-[calc(100vh-14rem)] flex-col rounded-[30px] p-6">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold tracking-tight text-on-surface">
@@ -938,7 +911,7 @@ function WrittenProtocolPageContent() {
               value={submissionText}
               onChange={(event) => setSubmissionText(event.target.value)}
               placeholder="Write your response here. The draft autosaves to your written-assessment session."
-              className="min-h-[640px] w-full resize-none rounded-[28px] border border-outline-variant/12 dark:border-transparent bg-surface-container-low px-5 py-5 text-sm leading-7 text-on-surface outline-none"
+              className="min-h-[calc(100vh-22rem)] w-full flex-1 resize-none rounded-[28px] border border-outline-variant/12 dark:border-transparent bg-surface-container-low px-5 py-5 text-sm leading-7 text-on-surface outline-none"
             />
           ) : (
             <div className="space-y-5">

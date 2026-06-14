@@ -1,49 +1,71 @@
-# CELTM Web
+# CELTM Web Master
 
-CELTM Web is a full-stack skill intelligence platform for assessment, learning-path
-generation, interview practice, profile evidence, and RAG-backed coaching.
+CELTM Web Master is a Phase 1 skill-readiness web app for students,
+institutions, and CELTM administrators. It combines Supabase student auth,
+institution/admin management, resume and credential evidence, assessments,
+career-aim planning, readiness reporting, and optional OpenAI-assisted analysis.
 
-The repository contains a Next.js frontend and a FastAPI backend. Supabase is the
-primary database and auth provider, Redis/Celery handles background work, Neo4j
-stores the derived skill graph, and Supabase pgvector supports retrieval for RAG.
+This checkout is not the old RAG/Celery/Neo4j runtime. Redis is used only for
+hosted shared rate limiting. The current app is a lighter hosted-first stack:
 
-## Main Capabilities
+- Frontend: Next.js App Router, React, TypeScript, Tailwind CSS, Supabase JS.
+- Backend: FastAPI, Pydantic, SQLite for local dev, optional Postgres/Supabase
+  Postgres for hosted mode.
+- Auth: Supabase access tokens for students; backend-issued JWTs for institution
+  admins and super admin.
+- Assessments: server-side deterministic scoring, live question bank reads from
+  Supabase tables, scheduled institution assignments.
+- AI: OpenAI-backed resume, certificate, written-response, career-aim, and chat
+  analysis when `OPENAI_API_KEY` is configured. Heuristic AI fallbacks are off by
+  default.
+- Files: local uploads under `backend/data/uploads` in development; hosted mode
+  requires private Supabase Storage with short-lived signed URLs.
 
-- Supabase login, onboarding, profile, settings, avatars, and career artifacts.
-- Dashboard summary, skill profile, gaps, hidden skills, role fit, and reports.
-- MCQ, situational, placement, and written assessment flows.
-- Written assessment grading with score, feedback, insights, loopholes, and
-  recommendations.
-- Learning path and trajectory generation from the user's role and skill gaps.
-- Interview sessions, transcript/media submission, and result retrieval.
-- RAG-backed copilot replies and enhanced search endpoints.
-- Admin CSV ingestion and CELTMIND synchronization.
+## Current Product Surface
 
-## Tech Stack
+Student-facing functions:
 
-- Frontend: Next.js 16, React 19, TypeScript, Tailwind CSS, Supabase JS.
-- Backend: Python 3.11+, FastAPI, Pydantic, Supabase client, Celery, Redis.
-- Data services: Supabase Postgres, Supabase Storage, pgvector, Neo4j.
-- AI services: OpenAI chat and embedding models, with optional Gemini/DeepSeek
-  keys exposed in backend settings.
+- Supabase sign up and login.
+- Onboarding with institution and department selection.
+- Dashboard readiness summary, resume prompt, exam analytics, subject progress,
+  career and skill signals.
+- Resume upload and analysis.
+- Credential/profile evidence uploads and link validation.
+- MCQ, situational, mixed, and written assessment flows.
+- Assigned tests from institution heads.
+- Career Aim recommendations and aspiration tracking.
+- Skill profile, gaps, hidden skill candidates, learning path, sessions,
+  competency map, settings, and chat assistant.
+
+Admin and institution functions:
+
+- Institution/super-admin login.
+- Super-admin creation of institutions, departments, and head accounts.
+- Question CSV ingestion into the Supabase question bank.
+- Question set and scheduled assessment assignment management.
+- Student search, readiness cards, detail views, CSV/PDF exports, and student
+  passport downloads.
 
 ## Repository Map
 
 ```text
 .
-  backend/                 FastAPI API, services, repositories, Celery tasks
-  backend/app/api/         Versioned API routers
-  backend/app/services/    Business logic for assessments, RAG, reports, etc.
-  backend/app/schemas/     Pydantic request and response models
-  backend/sql/             Supabase schema and repair SQL
-  backend/scripts/         Bootstrap, ingest, and verification scripts
+  backend/                 FastAPI app, database layer, security, AI helpers
+  backend/app/main.py      Current route surface and application composition
+  backend/app/database.py  SQLite/Postgres-compatible schema and access layer
+  backend/app/settings.py  Environment configuration and hosted-mode guards
+  backend/app/security.py  Supabase token validation and admin JWT helpers
+  backend/app/supabase_bank.py  Supabase question bank integration
+  backend/data/            Local ignored SQLite/upload runtime data
+  docs/API.md              Current API endpoint reference
+  docs/HOSTING_SECURITY_REVIEW.md  Hosting, security, and scalability analysis
+  docs/testing-benchmark.md  Manual and automated release benchmark
   frontend/                Next.js app
-  frontend/src/app/        App Router pages and dashboard routes
-  frontend/src/lib/        API client, Supabase client, storage helpers
-  CELTMIND/                CSV source files for roles, skills, and questions
-  docs/API.md              Backend endpoint reference
-  instructions.md          Windows PowerShell runbook
-  run-local.ps1            Local stack starter for backend and frontend
+  frontend/src/app/        App Router pages
+  frontend/src/lib/        API, Supabase, storage, and dashboard helpers
+  instructions.md          Local and hosted runbook
+  HOW_TO_RUN.md            Short local startup guide
+  run-local.ps1            One-command local backend/frontend starter
 ```
 
 ## Quick Start
@@ -53,32 +75,17 @@ Use PowerShell from the repository root.
 ```powershell
 cd backend
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Fill `backend/.env` with Supabase, Redis, Neo4j, and AI credentials. At minimum,
-the backend needs:
-
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY`
-- `SUPABASE_ANON_KEY` or `SUPABASE_PUBLISHABLE_KEY`
-- `SUPABASE_DB_CONNECTION_STRING` for schema/bootstrap scripts
-- `OPENAI_API_KEY` for LLM/RAG-backed features
-- `REDIS_URL` if Celery should run through Redis
-- `NEO4J_URI`, `NEO4J_USER`, and `NEO4J_PASSWORD` for graph sync
-
-Install the frontend dependencies:
+Edit `backend/.env`. For local development, keep the default local admin values
+only if the app is not exposed publicly.
 
 ```powershell
 cd ..\frontend
 npm install
-```
-
-Then start both apps from the repository root:
-
-```powershell
+cd ..
 .\run-local.ps1
 ```
 
@@ -87,111 +94,120 @@ The script starts:
 - Backend: `http://127.0.0.1:8000`
 - Frontend: `http://127.0.0.1:3000`
 
-It also writes `frontend/.env.local` from the Supabase values in `backend/.env`
-and points `NEXT_PUBLIC_API_BASE_URL` at `http://127.0.0.1:8000/api/v1`.
+It also writes `frontend/.env.local` from `backend/.env` when Supabase values are
+available.
 
-## Manual Startup
+## Required Environment
 
-Backend API:
+Backend variables are documented in [backend/.env.example](backend/.env.example).
+For hosted mode, set at least:
+
+- `APP_ENV=production`
+- `FRONTEND_ORIGIN=https://your-frontend-domain`
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY` or `SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `DATABASE_URL` or `SUPABASE_DATABASE_URL`
+- `CELTM_JWT_SECRET`
+- `ADMIN_USER`
+- `ADMIN_PASS`
+- `ADMIN_GATEWAY_CODE`
+- `OPENAI_API_KEY` if AI-backed analysis should work
+- `STORAGE_BACKEND=supabase`
+- `SUPABASE_STORAGE_BUCKET`
+- `ALLOW_LOCAL_FILE_SERVING=false`
+- `RATE_LIMIT_BACKEND=memory` for a single free Render instance, or `redis` with
+  `REDIS_URL` when using shared Redis/Upstash or multiple backend instances
+- `MONITORING_TOKEN`
+- `ADMIN_MFA_REQUIRED=true` and `ADMIN_MFA_SECRET` for hosted admin MFA
+
+Frontend variables:
+
+- `NEXT_PUBLIC_API_BASE_URL=https://your-backend-domain/api/v1`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+
+## Hosted Readiness
+
+The repo now includes the hosting hardening requested in the security review:
+
+- Frontend dependencies were updated and production `npm audit --omit=dev
+  --audit-level=moderate` is clean.
+- FastAPI has app-level rate limits for admin login, uploads, AI routes,
+  assessment routes, and general traffic. A single free Render instance can use
+  in-memory throttling; Redis/Upstash is recommended before scaling out.
+- AI calls are capped per user and globally, use a response cache, and can be
+  moved to queued resume-analysis jobs with `ASYNC_AI_JOBS_ENABLED=true`.
+- Hosted mode requires Postgres/Supabase Postgres and rejects SQLite.
+- Hosted mode requires private Supabase Storage; local `/files` serving is
+  disabled unless explicitly allowed for development.
+- Upload handlers enforce endpoint-specific size, extension, MIME, magic-byte,
+  and extracted-text limits before storage or AI processing.
+- Upload malware scanning can be enforced with `UPLOAD_SCAN_ENABLED=true` and a
+  ClamAV TCP service.
+- Profile-link crawling blocks private/reserved network targets, re-checks
+  redirects, caps response size, limits redirects, and restricts content types.
+- FastAPI and production Next responses set CSP/security headers.
+- Admin actions are written to `audit_logs`; admin password resets/changes bump
+  token versions so old admin JWTs are rejected.
+- Hosted admin MFA can be required with `ADMIN_MFA_REQUIRED=true`, and admins can
+  enroll/rotate MFA from the admin console.
+- `/system/metrics` and `/api/v1/system/metrics` expose protected runtime
+  metrics when called with `X-Monitoring-Token`.
+- `backend/scripts/backup_runtime_data.py` can export and restore runtime tables.
+- `backend/scripts/migrate_runtime.py` runs the idempotent runtime migrations.
+- `.github/workflows/ci.yml` runs backend compile/Bandit and frontend
+  test/lint/type/build/audit checks.
+- `deploy/hosting.env.example` and `deploy/nginx.conf` provide hosted env and
+  edge-limit templates.
+
+Public hosting still requires real provider setup: managed Postgres backups,
+private Supabase Storage bucket permissions, HTTPS domains, external monitoring
+alerts, WAF/body-size limits at the edge, secret rotation, and a tested restore.
+See [docs/HOSTING_SECURITY_REVIEW.md](docs/HOSTING_SECURITY_REVIEW.md).
+
+When `APP_ENV` is `production`, `prod`, or `hosted`, backend startup fails if
+required secrets are missing, default admin values are still configured,
+localhost is left in `FRONTEND_ORIGIN`, Postgres is not configured, private
+storage is not configured, an invalid rate-limit backend is configured, or
+monitoring/MFA requirements are incomplete.
+
+## Local Verification
+
+Backend:
 
 ```powershell
 cd backend
-.\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir app
+.\.venv\Scripts\python.exe -m compileall app
+.\.venv\Scripts\python.exe -m bandit -r app -f txt
+.\.venv\Scripts\python.exe scripts\migrate_runtime.py
+Invoke-RestMethod http://127.0.0.1:8000/health
 ```
 
 Frontend:
 
 ```powershell
 cd frontend
-npm run dev
+npm run test:logic
+npm run lint
+npx tsc --noEmit
+npm run build
+npm audit --omit=dev --audit-level=moderate
 ```
 
-Celery worker on Windows:
-
-```powershell
-cd backend
-celery -A app.tasks.celery_app:celery_app worker -l info -P solo
-```
-
-Celery beat:
-
-```powershell
-cd backend
-celery -A app.tasks.celery_app:celery_app beat -l info
-```
-
-## Data Setup
-
-Apply the Supabase schema before using the app:
-
-- `backend/sql/supabase_schema.sql`
-- repair or reset SQL files in `backend/sql/` only when intentionally rebuilding
-  or repairing the database
-
-If `SUPABASE_DB_CONNECTION_STRING` is valid, the bootstrap script can apply
-schema work and ingest local CELTMIND data:
-
-```powershell
-cd backend
-python scripts/bootstrap_supabase.py
-```
-
-Manual MCQ/CELTMIND ingestion:
-
-```powershell
-cd backend
-python scripts/ingest_mcq.py
-python scripts/check_celtmind_supabase.py
-```
-
-## API Documentation
-
-FastAPI serves generated docs when the backend is running:
+API docs while the backend is running:
 
 - Swagger UI: `http://127.0.0.1:8000/docs`
 - OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
+- Curated reference: [docs/API.md](docs/API.md)
 
-The curated endpoint reference is in [docs/API.md](docs/API.md).
+## Documentation
 
-## Verification
-
-After startup, check:
-
-```powershell
-Invoke-RestMethod http://127.0.0.1:8000/health
-```
-
-Then open `http://127.0.0.1:3000`, sign in, and verify dashboard, assessment,
-profile, and settings pages can load without backend unavailable messages.
-
-Useful backend checks:
-
-```powershell
-cd backend
-python scripts/check_celtmind_supabase.py
-python -m pytest app/tests
-```
-
-Useful frontend checks:
-
-```powershell
-cd frontend
-npm run lint
-npm run build
-```
-
-## Security Notes
-
-Do not commit real credentials. The root `.gitignore` excludes `.env` and
-`.env.*` files while allowing `.env.example`.
-
-Keep generated browser screenshots, debug output, local caches, and scratch
-scripts out of GitHub unless they are intentionally promoted into maintained
-test assets.
-
-## More Documentation
-
-- [instructions.md](instructions.md): detailed Windows setup and runbook.
-- [backend/README.md](backend/README.md): backend-specific architecture and
-  runtime notes.
-- [docs/API.md](docs/API.md): endpoint reference and request examples.
+- [HOW_TO_RUN.md](HOW_TO_RUN.md): short local startup guide.
+- [instructions.md](instructions.md): local and hosted runbook.
+- [backend/README.md](backend/README.md): backend-specific setup and deployment.
+- [frontend/README.md](frontend/README.md): frontend-specific setup and deployment.
+- [docs/API.md](docs/API.md): current endpoint inventory.
+- [docs/HOSTING_SECURITY_REVIEW.md](docs/HOSTING_SECURITY_REVIEW.md): security,
+  scalability, and release-readiness analysis.
+- [docs/testing-benchmark.md](docs/testing-benchmark.md): release test cases.

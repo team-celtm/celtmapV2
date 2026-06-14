@@ -14,6 +14,12 @@
 output/
 scratch/
 backend/scratch/
+backend/data/
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+backend/.tmp_*.sqlite
+backend/.tmp_*.sqlite3
 backend/analysis_output.txt
 backend/analysis_after_ingest.txt
 backend/ingest_result.json
@@ -31,6 +37,8 @@ playwright_test/*.png
 **/.env
 **/.env.*
 !**/.env.example
+*recovery*codes*.png
+*recovery*code*.png
 **/.DS_Store
 **/.DS_Store?
 **/._*

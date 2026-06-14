@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { ScheduleEvent, ScheduleEventPayload } from "@/lib/celtm";
 import { formatDateTime, formatRelativeTime, toTitleCase } from "@/lib/celtm";
+import ThemedSelect from "@/components/ThemedSelect";
 
 interface SchedulePlannerProps {
   events: ScheduleEvent[];
@@ -359,22 +360,13 @@ export function SchedulePlanner({ events, onCreate, onUpdate, onDelete }: Schedu
                 </label>
               </div>
 
-              <label className="block">
-                <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant">
-                  Event type
-                </span>
-                <select
-                  value={form.event_type}
-                  onChange={(event) => setForm((current) => ({ ...current, event_type: event.target.value }))}
-                  className="h-12 w-full rounded-2xl border border-outline-variant/12 dark:border-transparent bg-surface px-4 text-sm text-on-surface outline-none"
-                >
-                  {eventTypes.map((eventType) => (
-                    <option key={eventType} value={eventType}>
-                      {toTitleCase(eventType)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <ThemedSelect
+                label="Event type"
+                value={form.event_type}
+                onChange={(value) => setForm((current) => ({ ...current, event_type: value }))}
+                options={eventTypes.map((eventType) => ({ value: eventType, label: toTitleCase(eventType) }))}
+                buttonClassName="min-h-12 border-outline-variant/12 dark:border-transparent"
+              />
 
               <label className="block">
                 <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant">

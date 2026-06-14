@@ -1,187 +1,149 @@
-# CELTM Backend
+# CELTM Phase 1 Backend
 
-Production-grade FastAPI backend for the CELTM skill intelligence platform.
+The backend is a FastAPI service that keeps the current CELTM runtime lightweight:
+Supabase validates student sessions, backend JWTs protect institution/admin
+routes, SQLite is used for local development, and Postgres/Supabase Postgres is
+available for hosted deployments through `DATABASE_URL` or
+`SUPABASE_DATABASE_URL`.
 
-## What This Backend Covers
+## Main Responsibilities
 
-- Supabase as the primary runtime database
-- CELTMIND CSV ingestion into Supabase
-- MCQ delivery and assessment scoring from Supabase only
-- Transcript-first interview evaluation
-- Hidden skill detection and approval flow
-- Learning path and trajectory APIs
-- Dashboard projection and report generation
-- Redis + Celery for all non-trivial background processing
-- Neo4j as a derived skill graph
-- Supabase `pgvector` as the retrieval layer for RAG-backed learning and interview context
+- Validate Supabase student bearer tokens.
+- Issue and verify admin/institution JWTs.
+- Store profiles, preferences, artifacts, readiness events, assessments,
+  assignments, admin accounts, aspirations, and schedule events.
+- Read/write Supabase question-bank rows for live assessments.
+- Score objective assessments server-side.
+- Evaluate resumes, certificates, written answers, career aims, and chat prompts
+  with OpenAI when configured.
+- Export dashboard, passport, assessment, and admin reports as PDF/CSV.
 
-## Structure
+## Local Setup
 
-```text
-backend/
-  app/
-    api/
-    config/
-    core/
-    dependencies/
-    integrations/
-    models/
-    repositories/
-    schemas/
-    services/
-    tasks/
-    utils/
-  docs/
-  scripts/
-  sql/
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env
+.\.venv\Scripts\python.exe run_dev.py
+```
+
+The API serves at `http://127.0.0.1:8000`.
+
+Health check:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
 ```
 
 ## Environment
 
-Copy `backend/.env.example` to `backend/.env` and fill in:
+Use [backend/.env.example](.env.example) as the source template.
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_DB_CONNECTION_STRING`
-- `NEO4J_URI`
-- `NEO4J_USER`
-- `NEO4J_PASSWORD`
-- `OPENAI_API_KEY`
-- `REDIS_URL`
-- `REDIS_ENABLED`
-- `CELTMIND_DIR`
-- `CELTMIND_SYNC_ENABLED`
+Important variables:
 
-The backend also accepts legacy Supabase env names already used in some local setups:
+- `APP_ENV`: set to `production`, `prod`, or `hosted` in public deployments.
+- `FRONTEND_ORIGIN`: comma-separated allowed browser origins.
+- `SUPABASE_URL`: Supabase project URL.
+- `SUPABASE_ANON_KEY` or `SUPABASE_PUBLISHABLE_KEY`: key used with student token
+  validation.
+- `SUPABASE_SERVICE_ROLE_KEY`: server-only key for question-bank writes.
+- `DATABASE_URL` or `SUPABASE_DATABASE_URL`: hosted Postgres connection string.
+- `CELTM_POSTGRES_SCHEMA`: defaults to `celtm_app`.
+- `STORAGE_BACKEND`: `local` for development, `supabase` for hosted mode.
+- `SUPABASE_STORAGE_BUCKET`: private upload bucket for hosted mode.
+- `ALLOW_LOCAL_FILE_SERVING`: keep `true` only for local development.
+- `SIGNED_URL_TTL_SECONDS`: signed upload URL lifetime.
+- `RATE_LIMIT_BACKEND`: `memory` for local or a single free Render instance,
+  `redis` for shared throttling across scaled instances.
+- `REDIS_URL`: required only when `RATE_LIMIT_BACKEND=redis`.
+- `RATE_LIMIT_AI_PER_HOUR` and `RATE_LIMIT_AI_GLOBAL_PER_MINUTE`: AI cost and
+  provider-pressure controls.
+- `AI_CACHE_ENABLED`, `AI_CACHE_TTL_SECONDS`, `AI_CACHE_MAX_ENTRIES`: provider
+  response cache controls.
+- `ASYNC_AI_JOBS_ENABLED`: optional queued resume-analysis mode.
+- `UPLOAD_SCAN_ENABLED`, `CLAMAV_TCP_HOST`, `CLAMAV_TCP_PORT`: optional ClamAV
+  upload scanning.
+- `MONITORING_TOKEN`: required for hosted `/system/metrics`.
+- `ADMIN_MFA_REQUIRED` and `ADMIN_MFA_SECRET`: hosted admin TOTP enforcement.
+- `OPENAI_API_KEY`: enables AI-backed analysis.
+- `ALLOW_HEURISTIC_AI_FALLBACKS`: keep `false` for release benchmarks.
+- `ADMIN_USER`, `ADMIN_PASS`, `ADMIN_GATEWAY_CODE`, `CELTM_JWT_SECRET`: required
+  admin security settings.
 
-- `SUPABASE_SECRET_KEY` as a fallback for `SUPABASE_SERVICE_ROLE_KEY`
-- `SUPABASE_PUBLISHABLE_KEY` as a fallback for `SUPABASE_ANON_KEY`
+Hosted mode intentionally fails startup when default admin values, missing
+secrets, missing database URL, public local file serving, missing private
+storage, an invalid rate-limit backend, missing monitoring token, missing
+required MFA secret, or localhost CORS origins are detected.
 
-Celery configuration is optional:
+## Data Stores
 
-- `REDIS_URL` is enough for local use
-- `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` only matter if you want Celery to use a different Redis instance
-- Celery does not require a separate account, API key, or hosted credential
-- for production hosting, you only need a reachable Redis service URL, usually `redis://...` or `rediss://...`
-- `pip install -r requirements.txt` already installs `celery[redis]`
-- set `CELTMIND_SYNC_ENABLED=false` in hosted environments that do not mount the `CELTMIND` folder
-- local-only fallback is supported with `REDIS_ENABLED=false`, `REDIS_FAIL_OPEN=true`, and `CELERY_EAGER_MODE=true`
+Local development:
 
-## Setup
+```text
+backend/data/celtm_phase1.sqlite3
+backend/data/uploads/
+```
+
+Hosted deployment:
+
+- Use Postgres/Supabase Postgres through `DATABASE_URL` or
+  `SUPABASE_DATABASE_URL`.
+- Use private Supabase Storage for uploaded resumes, avatars, certificates, and
+  written evidence. API responses include short-lived signed URLs. Local `/files`
+  serving is acceptable for development only and is blocked by hosted-mode
+  validation when `ALLOW_LOCAL_FILE_SERVING=true`.
+- Use Redis/Upstash for hosted rate limiting before scaling beyond one backend
+  instance. A single free Render instance can use `RATE_LIMIT_BACKEND=memory`.
+- Enable ClamAV or an equivalent scanner with `UPLOAD_SCAN_ENABLED=true` before
+  accepting broad public uploads.
+- Use `scripts/migrate_runtime.py` during deployment before starting app
+  instances.
+- Keep Supabase service-role credentials server-side only.
+- Back up runtime tables with `scripts/backup_runtime_data.py` and verify restore
+  before public release.
+
+## Route Groups
+
+- Public/system: `/health`, `/api/v1/institutions`; `/system/metrics` and
+  `/api/v1/system/metrics` require `X-Monitoring-Token` in hosted mode.
+- Student: `/api/v1/profile/*`, `/settings/*`, `/resume/*`, `/dashboard/*`,
+  `/skills/*`, `/assessments/*`, `/written-assessments/*`, `/learning/path`,
+  `/reports/me/*`, `/schedule/events`, `/career-*`, `/chat`.
+- Admin/institution: `/api/v1/admin/*`.
+- Jobs: `/api/v1/jobs/{job_id}` for owned background processing status.
+- Static local files: `/files/*` only when `ALLOW_LOCAL_FILE_SERVING=true`.
+
+See [../docs/API.md](../docs/API.md) for the route inventory.
+
+## Checks
 
 ```powershell
 cd backend
-python -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m compileall app
+.\.venv\Scripts\python.exe -m bandit -r app -f txt
+.\.venv\Scripts\python.exe scripts\migrate_runtime.py
 ```
 
-Apply the Supabase schema in `backend/sql/supabase_schema.sql` before using the API.
+Current security observations are tracked in
+[../docs/HOSTING_SECURITY_REVIEW.md](../docs/HOSTING_SECURITY_REVIEW.md).
 
-If you have a valid Postgres connection string in `SUPABASE_DB_CONNECTION_STRING`, you can apply and ingest in one step:
+Backup and restore:
 
 ```powershell
 cd backend
-python scripts/bootstrap_supabase.py
+.\.venv\Scripts\python.exe scripts\backup_runtime_data.py --output data\backups\celtm-runtime-backup.json
+.\.venv\Scripts\python.exe scripts\backup_runtime_data.py --restore --input data\backups\celtm-runtime-backup.json
 ```
 
-## Run Locally
-
-API:
+Hosted health check:
 
 ```powershell
-cd backend
-uvicorn app.main:app --reload
+.\.venv\Scripts\python.exe scripts\check_hosted_health.py --base-url https://your-backend-domain --monitoring-token $env:MONITORING_TOKEN
 ```
 
-Lower-overhead local API command on Windows:
+Secret generation for rotation:
 
 ```powershell
-cd backend
-.\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir app
+.\.venv\Scripts\python.exe scripts\generate_hosted_secrets.py
 ```
-
-Celery worker on Windows:
-
-```powershell
-cd backend
-celery -A app.tasks.celery_app:celery_app worker -l info -P solo
-```
-
-Celery beat:
-
-```powershell
-cd backend
-celery -A app.tasks.celery_app:celery_app beat -l info
-```
-
-Manual CELTMIND ingestion:
-
-```powershell
-cd backend
-python scripts/ingest_mcq.py
-```
-
-Verification:
-
-```powershell
-cd backend
-python scripts/check_celtmind_supabase.py
-```
-
-## Docker
-
-Backend-only Docker support is included through:
-
-- `backend/Dockerfile`
-- `backend/docker-compose.yml`
-
-This compose file starts:
-
-- API
-- Celery worker
-- Celery beat
-- Redis
-
-Supabase and Neo4j remain external services.
-
-## API Surface
-
-Versioned API base: `/api/v1`
-
-Main route groups:
-
-- `/auth/*`
-- `/profile/*`
-- `/settings/*`
-- `/mcq/*`
-- `/assessments/*`
-- `/skills/*`
-- `/learning/*`
-- `/trajectory/*`
-- `/interview/*`
-- `/sessions`
-- `/schedule/*`
-- `/reports/*`
-- `/dashboard/*`
-- `/admin/*`
-
-Compatibility aliases for the current frontend mock contract are also exposed under `/api/*`.
-
-## Async Workflow
-
-The request path emits domain events into `domain_events`. Celery processes those events and fans out to:
-
-- dashboard projection refresh
-- report generation
-- interview evaluation
-- hidden skill candidate creation
-- Neo4j graph sync
-- CELTMIND sync
-
-## Notes
-
-- The current implementation is intentionally transcript-first for interviews.
-- CELTMIND CSV files are ingestion-only. Runtime APIs never read from CSV.
-- Hosted runtime can skip CELTMIND resync entirely with `CELTMIND_SYNC_ENABLED=false`.
-- Pagination defaults to cursor-based list responses with `limit <= 100`.
-- Supabase-heavy reads are pushed toward projection tables to avoid large joins.

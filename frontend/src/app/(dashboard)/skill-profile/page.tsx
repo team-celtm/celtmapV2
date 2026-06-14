@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { apiFetch, getApiErrorMessage } from "@/lib/api";
 import { buildAssessmentQuizHref } from "@/lib/assessmentLinks";
+import CeltmProgressLoader from "@/components/CeltmProgressLoader";
 import { SkillDonutChart } from "@/components/skills/SkillDonutChart";
 import { SkillInsightModal } from "@/components/skills/SkillInsightModal";
 import type {
@@ -89,6 +90,7 @@ export default function SkillProfilePage() {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [data, setData] = useState<SkillProfileState>(initialState);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
 
@@ -98,6 +100,7 @@ export default function SkillProfilePage() {
     const loadProfile = async () => {
       try {
         setIsLoading(true);
+        setIsProfileComplete(false);
         setError(null);
 
         const [
@@ -149,6 +152,8 @@ export default function SkillProfilePage() {
           latestReport: latestReportResult.status === "fulfilled" ? latestReportResult.value : null,
         });
         setError(buildLoadWarning(failedSections, "Failed to load the live skill profile."));
+        setIsProfileComplete(true);
+        await new Promise((resolve) => window.setTimeout(resolve, 650));
       } catch (caught) {
         if (!isMounted) {
           return;
@@ -158,6 +163,7 @@ export default function SkillProfilePage() {
       } finally {
         if (isMounted) {
           setIsLoading(false);
+          setIsProfileComplete(false);
         }
       }
     };
@@ -198,29 +204,19 @@ export default function SkillProfilePage() {
     color: ["#6366F1", "#8B5CF6", "#14B8A6", "#F59E0B", "#EC4899", "#22C55E"][index % 6],
   }));
 
-  const StatCardSkeleton = () => (
-    <div className="animate-pulse rounded-3xl bg-surface-container-low px-5 py-5">
-      <div className="h-2 w-16 rounded bg-on-surface-variant/20" />
-      <div className="mt-3 h-8 w-24 rounded bg-on-surface-variant/15" />
-    </div>
-  );
-
-  const ProfileSkeleton = () => (
-    <div className="animate-pulse space-y-8 lg:flex lg:items-center lg:justify-between lg:gap-8 lg:space-y-0">
-      <div className="flex items-start gap-5">
-        <div className="h-20 w-20 rounded-[28px] bg-on-surface-variant/10" />
-        <div className="flex-1 space-y-3">
-          <div className="h-2 w-24 rounded bg-on-surface-variant/20" />
-          <div className="h-10 w-48 rounded bg-on-surface-variant/15" />
-          <div className="h-4 w-64 rounded bg-on-surface-variant/10" />
-        </div>
+  if (isLoading) {
+    return (
+      <div className="mx-auto w-full max-w-[1520px] page-fade-in pb-10">
+        <CeltmProgressLoader
+          title="Loading skill profile"
+          caption="Cooking your skill profile"
+          forceComplete={isProfileComplete}
+          minHeightClassName="min-h-[78vh]"
+          stages={["Fetching readiness", "Mapping verified skills", "Checking hidden skills", "Building profile view"]}
+        />
       </div>
-      <div className="flex gap-3">
-        <div className="h-10 w-32 rounded-full bg-on-surface-variant/10" />
-        <div className="h-10 w-32 rounded-full bg-on-surface-variant/10" />
-      </div>
-    </div>
-  );
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-[1520px] space-y-6 page-fade-in pb-10">
@@ -231,10 +227,7 @@ export default function SkillProfilePage() {
       ) : null}
 
       <section className="clay-card rounded-[32px] p-8 md:p-10">
-        {isLoading ? (
-          <ProfileSkeleton />
-        ) : (
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-5">
               <InitialBadge label={displayName} />
               <div className="space-y-3">
@@ -296,35 +289,27 @@ export default function SkillProfilePage() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+        </div>
       </section>
 
       <section className="flex flex-wrap gap-2 rounded-[28px] bg-surface-container-low p-2">
-        {isLoading ? (
-          <div className="flex gap-2 p-1">
-             <div className="h-8 w-24 rounded-full bg-on-surface-variant/10 animate-pulse" />
-             <div className="h-8 w-24 rounded-full bg-on-surface-variant/10 animate-pulse" />
-          </div>
-        ) : (
-          [
-            { key: "overview" as const, label: "Overview" },
-            { key: "gaps" as const, label: "Gap Analysis" },
-            { key: "discoveries" as const, label: "Discovery Queue" },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] transition ${
-                activeTab === tab.key
-                  ? "bg-surface text-primary shadow-sm"
-                  : "text-on-surface-variant hover:text-on-surface"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))
-        )}
+        {[
+          { key: "overview" as const, label: "Overview" },
+          { key: "gaps" as const, label: "Gap Analysis" },
+          { key: "discoveries" as const, label: "Discovery Queue" },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] transition ${
+              activeTab === tab.key
+                ? "bg-surface text-primary shadow-sm"
+                : "text-on-surface-variant hover:text-on-surface"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </section>
 
       {activeTab === "overview" ? (

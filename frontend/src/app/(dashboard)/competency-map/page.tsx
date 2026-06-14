@@ -1,4 +1,5 @@
 import React from 'react';
+import AppIcon from "@/components/AppIcon";
 
 export default function Page() {
   return (
@@ -6,15 +7,15 @@ export default function Page() {
       
 
 <section className="relative mb-16 overflow-hidden">
-<div className="flex flex-col lg:flex-row items-end justify-between mb-10 gap-6">
+<div className="flex flex-col lg:flex-row items-start lg:items-end justify-between mb-10 gap-6">
 <div className="max-w-2xl">
 <span className="text-primary font-bold tracking-[0.3em] uppercase text-xs mb-4 block">Competency Intelligence</span>
-<h1 className="text-5xl lg:text-7xl font-extrabold tracking-tighter leading-tight">Mastery <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-tertiary">Topology</span></h1>
+<h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tighter leading-tight">Mastery <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-tertiary">Topology</span></h1>
 <p className="mt-6 text-on-surface-variant text-lg max-w-lg leading-relaxed">
                         Visualizing the current organizational expertise landscape. High-resolution skill clustering derived from real-time performance and project output.
                     </p>
 </div>
-<div className="flex gap-4">
+<div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row">
 <div className="clay-card p-6 rounded-xl ">
 <div className="text-primary text-4xl font-black mb-1">92%</div>
 <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Global Proficiency</div>
@@ -26,7 +27,7 @@ export default function Page() {
 </div>
 </div>
 
-<div className="w-full h-[500px] clay-card rounded-xl relative overflow-hidden group">
+<div className="w-full h-[420px] sm:h-[500px] clay-card rounded-xl relative overflow-hidden group">
 
 <div className="absolute inset-0 opacity-40 mix-blend-screen pointer-events-none">
 <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 blur-[120px] rounded-full"></div>
@@ -58,7 +59,7 @@ export default function Page() {
 </div>
 </div>
 
-<div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5"></div>
+<div className="absolute inset-0 holographic-grid opacity-10"></div>
 <div className="absolute bottom-8 left-8 flex items-center gap-4 text-xs font-mono text-on-surface-variant/40">
 <span>LAT: 42.3601</span>
 <span>LNG: -71.0589</span>
@@ -68,18 +69,18 @@ export default function Page() {
 </section>
 
 <section className="mt-24">
-<div className="flex items-center justify-between mb-12">
+<div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between mb-12">
 <div>
 <h3 className="text-3xl font-bold tracking-tight">Competency Matrix</h3>
 <p className="text-on-surface-variant text-sm mt-2">Quantitative assessment across key operational pillars.</p>
 </div>
-<div className="flex gap-2">
+<div className="flex flex-wrap gap-2">
 <button className="bg-surface-container-high px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest border border-outline-variant/10 dark:border-transparent hover:border-primary/50 transition-all">Export Report</button>
 <button className="bg-primary text-on-primary px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all">Filter View</button>
 </div>
 </div>
 <div className="overflow-x-auto no-scrollbar">
-<table className="w-full text-left border-separate border-spacing-y-4">
+<table className="w-full min-w-[760px] text-left border-separate border-spacing-y-4">
 <thead className="text-on-surface-variant text-[10px] uppercase tracking-[0.2em] font-bold">
 <tr>
 <th className="px-6 py-4">Competency Name</th>
@@ -95,7 +96,7 @@ export default function Page() {
 <td className="px-6 py-8 rounded-l-xl">
 <div className="flex items-center gap-4">
 <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-<span className="material-symbols-outlined">psychology</span>
+<AppIcon name="psychology" className="h-5 w-5" />
 </div>
 <div>
 <div className="font-bold text-white tracking-tight">AI Strategy &amp; Ethics</div>
@@ -125,7 +126,7 @@ export default function Page() {
 </div>
 </td>
 <td className="px-6 py-8 rounded-r-xl text-right">
-<button className="material-symbols-outlined text-on-surface-variant hover:text-white transition-colors">more_vert</button>
+<button className="text-on-surface-variant hover:text-white transition-colors" aria-label="More actions"><AppIcon name="more_vert" className="h-5 w-5" /></button>
 </td>
 </tr>
 
@@ -133,7 +134,7 @@ export default function Page() {
 <td className="px-6 py-8 rounded-l-xl">
 <div className="flex items-center gap-4">
 <div className="w-10 h-10 bg-secondary/10 rounded-lg flex items-center justify-center text-secondary">
-<span className="material-symbols-outlined">dynamic_feed</span>
+<AppIcon name="dynamic_feed" className="h-5 w-5" />
 </div>
 <div>
 <div className="font-bold text-white tracking-tight">System Architecture</div>
@@ -158,12 +159,12 @@ export default function Page() {
 <td className="px-6 py-8">
 <div className="flex items-center gap-2">
 <svg className="w-24 h-8 glow-tail" fill="none" viewBox="0 0 100 30">
-<path d="M0 20C20 22 40 18 60 12C80 6 100 8" stroke="#c180ff" strokeLinecap="round" strokeWidth="2" />
+<path d="M0 20C20 22 40 18 60 12C80 6 90 8 100 8" stroke="#c180ff" strokeLinecap="round" strokeWidth="2" />
 </svg>
 </div>
 </td>
 <td className="px-6 py-8 rounded-r-xl text-right">
-<button className="material-symbols-outlined text-on-surface-variant hover:text-white transition-colors">more_vert</button>
+<button className="text-on-surface-variant hover:text-white transition-colors" aria-label="More actions"><AppIcon name="more_vert" className="h-5 w-5" /></button>
 </td>
 </tr>
 
@@ -171,7 +172,7 @@ export default function Page() {
 <td className="px-6 py-8 rounded-l-xl">
 <div className="flex items-center gap-4">
 <div className="w-10 h-10 bg-tertiary/10 rounded-lg flex items-center justify-center text-tertiary">
-<span className="material-symbols-outlined">groups</span>
+<AppIcon name="groups" className="h-5 w-5" />
 </div>
 <div>
 <div className="font-bold text-white tracking-tight">Cross-Functional Synergy</div>
@@ -201,7 +202,7 @@ export default function Page() {
 </div>
 </td>
 <td className="px-6 py-8 rounded-r-xl text-right">
-<button className="material-symbols-outlined text-on-surface-variant hover:text-white transition-colors">more_vert</button>
+<button className="text-on-surface-variant hover:text-white transition-colors" aria-label="More actions"><AppIcon name="more_vert" className="h-5 w-5" /></button>
 </td>
 </tr>
 </tbody>
@@ -210,26 +211,26 @@ export default function Page() {
 </section>
 
 <section className="mt-24 grid grid-cols-1 md:grid-cols-3 gap-8">
-<div className="md:col-span-2 clay-card p-10 rounded-xl relative overflow-hidden group">
+<div className="md:col-span-2 clay-card p-6 sm:p-10 rounded-xl relative overflow-hidden group">
 <div className="relative z-10">
 <h4 className="text-2xl font-bold mb-4">Strategic Recommendation</h4>
 <p className="text-on-surface-variant leading-relaxed max-w-xl">
                         Based on current topography data, there is a cluster weakness in <span className="text-primary font-bold">Quantum Readiness</span>. We recommend initiating a cross-domain sprint to mitigate the 14 identified gaps within the Q3 technical roadmap.
                     </p>
 <button className="mt-8 flex items-center gap-3 text-primary text-xs font-bold uppercase tracking-widest group-hover:gap-5 transition-all">
-                        View Training Modules <span className="material-symbols-outlined">arrow_forward</span>
+                        View Training Modules <AppIcon name="arrow_forward" className="h-4 w-4" />
 </button>
 </div>
 <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-primary/10 blur-[80px] rounded-full group-hover:scale-125 transition-transform duration-700"></div>
 </div>
-<div className="bg-surface-container-high p-10 rounded-xl flex flex-col justify-between border border-outline-variant/10 dark:border-transparent">
+<div className="bg-surface-container-high p-6 sm:p-10 rounded-xl flex flex-col justify-between border border-outline-variant/10 dark:border-transparent">
 <div>
-<span className="material-symbols-outlined text-secondary text-4xl mb-6">bolt</span>
+<AppIcon name="bolt" className="mb-6 h-10 w-10 text-secondary" />
 <h4 className="text-xl font-bold mb-2">Peak Velocity</h4>
 <p className="text-sm text-on-surface-variant">Fastest growing domain in your ecosystem.</p>
 </div>
 <div className="mt-8">
-<div className="text-secondary text-5xl font-black">+42%</div>
+<div className="text-secondary text-4xl sm:text-5xl font-black">+42%</div>
 <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mt-2">Cloud Synthesis Mastery</div>
 </div>
 </div>

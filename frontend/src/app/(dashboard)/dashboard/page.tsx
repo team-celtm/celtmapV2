@@ -1,793 +1,773 @@
 "use client";
 
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
-
-import { apiFetch, getApiErrorMessage } from "@/lib/api";
-const SchedulePlanner = dynamic(() => import("@/components/schedule/SchedulePlanner").then(mod => mod.SchedulePlanner), {
-  ssr: false,
-  loading: () => <div className="h-96 w-full animate-pulse rounded-3xl bg-surface-container-low" />
-});
-
-const SkillDonutChart = dynamic(() => import("@/components/skills/SkillDonutChart").then(mod => mod.SkillDonutChart), {
-  ssr: false,
-  loading: () => <div className="h-64 w-64 animate-pulse rounded-full bg-surface-container-low" />
-});
-
-const SkillInsightModal = dynamic(() => import("@/components/skills/SkillInsightModal").then(mod => mod.SkillInsightModal), {
-  ssr: false
-});
-
-const ExamLog = dynamic(() => import("@/components/dashboard/ExamLog").then(mod => mod.ExamLog), {
-  ssr: false,
-  loading: () => <div className="grid gap-4 sm:grid-cols-2">
-    {[1, 2, 3, 4].map((i) => (
-      <div key={i} className="h-40 animate-pulse rounded-3xl bg-surface-container-low" />
-    ))}
-  </div>
-});
-
-import { ExamInsightModal } from "@/components/dashboard/ExamInsightModal";
-import { ResumeReminderPopup } from "@/components/dashboard/ResumeReminderPopup";
+import { ApiError, apiFetch, apiFetchBlob } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
-import { ListSkeleton, SectionSkeleton, StatCardSkeleton } from "@/components/common/Skeletons";
 import type {
-  ArtifactRead,
-  AssessmentLogEntry,
-  CursorPage,
   DashboardSummary,
   ProfileRead,
-  ReportRead,
-  RoleFitRead,
-  ScheduleEventPayload,
-  ScheduleEvent,
-  SkillGapRead,
-  SkillRead,
+  SubjectProgress,
 } from "@/lib/celtm";
-import { formatDate, formatPercent, formatRelativeTime } from "@/lib/celtm";
+import AppIcon from "@/components/AppIcon";
+import CeltmProgressLoader from "@/components/CeltmProgressLoader";
+import { SubjectProgressCards } from "@/components/dashboard/SubjectProgressCards";
+import { motion as Motion, AnimatePresence } from "framer-motion";
+import {
+  breakdownProgressPercent,
+  formatBreakdownScore,
+  hasOnlyProfileLinksWithoutInsights,
+  normalizeScoreBreakdown,
+} from "@/lib/dashboardLogic.mjs";
 
-interface DashboardState {
-  summary: DashboardSummary;
-  roleFit: RoleFitRead;
-  skills: SkillRead[];
-  gaps: SkillGapRead[];
-  profile: ProfileRead;
-  artifacts: ArtifactRead[];
-  events: ScheduleEvent[];
-  latestReport: ReportRead | null;
+interface ResumeAnalysis {
+  id: string;
+  target_role: string;
+  match_score: number;
+  created_at: string;
+  analysis: {
+    match_score?: number;
+    verdict?: string;
+    summary?: string;
+    score_breakdown?: Array<{ label: string; score: number; max: number }>;
+    top_keywords?: Array<{ rank: number; keyword: string; status: string; detail: string; badge: string }>;
+    red_flags?: Array<{ title: string; reason: string; fix: string }>;
+    full_breakdown?: string;
+    strong_points?: string[];
+    weak_points?: string[];
+    institute_help?: string[];
+  };
 }
 
-const emptySummary: DashboardSummary = {
-  user_id: "",
-  readiness_score: 0,
-  role_fit: 0,
-  top_skills: [],
-  domain_breakdown: {},
-  pending_hidden_skills: 0,
-  next_event: null,
-  latest_report_id: null,
-  latest_report_created_at: null,
-};
+interface AssessmentLog {
+  id: string;
+  type: string;
+  subject: string;
+  score: number;
+  status: string;
+  completed_at: string | null;
+  insight: string;
+  feedback: string | null;
+  strengths: string[];
+  risks: string[];
+  recommendations: string[];
+  readiness_score: number;
+  role_name: string;
+  hidden_skills?: string[];
+  areas_of_betterment?: string[];
+  analytics?: {
+    correct: number;
+    wrong: number;
+    total: number;
+  };
+}
 
-const emptyRoleFit: RoleFitRead = {
-  role_name: "Unassigned",
-  fit_score: 0,
-  matched_skills: [],
-  missing_skills: [],
-};
+type KeywordItem = { rank: number; keyword: string; status: string; detail: string; badge: string };
+type RedFlagItem = { title: string; reason: string; fix: string };
 
-const emptyProfile: ProfileRead = {
-  id: "",
-  email: null,
-  full_name: null,
-  headline: null,
-  focus_role: null,
-  weekly_goal: null,
-  avatar_url: null,
-  metadata: {},
-  created_at: null,
-  updated_at: null,
-};
+async function fetchDashboardData<T>(path: string, timeoutMs = 8000): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort(new DOMException(`Dashboard request timed out after ${timeoutMs}ms`, "TimeoutError"));
+  }, timeoutMs);
 
-const emptyState: DashboardState = {
-  summary: emptySummary,
-  roleFit: emptyRoleFit,
-  skills: [],
-  gaps: [],
-  profile: emptyProfile,
-  artifacts: [],
-  events: [],
-  latestReport: null,
-};
+  try {
+    return await apiFetch<T>(path, {
+      signal: controller.signal,
+      cacheTtlMs: 60_000,
+    });
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
 
-function EmptyPanel({
-  title,
-  body,
-  actionHref,
-  actionLabel,
-}: {
-  title: string;
-  body: string;
-  actionHref: string;
-  actionLabel: string;
-}) {
+function listFromUnknown(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === "object") return Object.values(value as Record<string, unknown>);
+  if (typeof value === "string" && value.trim()) return [value.trim()];
+  return [];
+}
+
+function normalizeKeywords(value: unknown): KeywordItem[] {
+  return listFromUnknown(value)
+    .map((item, index) => {
+      if (item && typeof item === "object") {
+        const raw = item as Record<string, unknown>;
+        const keyword = String(raw.keyword ?? raw.term ?? raw.name ?? raw.label ?? raw.title ?? "").trim();
+        if (!keyword) return null;
+        return {
+          rank: Number(raw.rank ?? index + 1) || index + 1,
+          keyword,
+          status: String(raw.status ?? raw.presence ?? "Review"),
+          detail: String(raw.detail ?? raw.description ?? raw.reason ?? "Make this explicit with resume evidence."),
+          badge: String(raw.badge ?? raw.status ?? "Keyword"),
+        };
+      }
+      const keyword = String(item ?? "").trim();
+      if (!keyword) return null;
+      return {
+        rank: index + 1,
+        keyword,
+        status: "Review",
+        detail: "Add this keyword only when it is supported by visible resume evidence.",
+        badge: "Keyword",
+      };
+    })
+    .filter((item): item is KeywordItem => Boolean(item))
+    .slice(0, 5);
+}
+
+function normalizeRedFlags(value: unknown): RedFlagItem[] {
+  return listFromUnknown(value)
+    .map((item) => {
+      if (item && typeof item === "object") {
+        const raw = item as Record<string, unknown>;
+        const title = String(raw.title ?? raw.flag ?? raw.name ?? raw.label ?? "").trim();
+        if (!title) return null;
+        return {
+          title,
+          reason: String(raw.reason ?? raw.description ?? raw.detail ?? "This can weaken trust during a fast recruiter scan."),
+          fix: String(raw.fix ?? raw.recommendation ?? raw.solution ?? "Add specific evidence and remove ambiguity."),
+        };
+      }
+      const title = String(item ?? "").trim();
+      if (!title) return null;
+      return {
+        title,
+        reason: "A recruiter may notice this quickly during the first resume screen.",
+        fix: "Rewrite the section with concrete evidence, dates, links, or measured impact.",
+      };
+    })
+    .filter((item): item is RedFlagItem => Boolean(item))
+    .slice(0, 3);
+}
+
+export default function DashboardPage() {
+  const { user, refreshProfile } = useAuth();
+  const [profile, setProfile] = useState<ProfileRead | null>(null);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [resume, setResume] = useState<ResumeAnalysis | null>(null);
+  const [assessmentLogs, setAssessmentLogs] = useState<AssessmentLog[]>([]);
+  const [subjectProgress, setSubjectProgress] = useState<SubjectProgress[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isResumeComplete, setIsResumeComplete] = useState(false);
+  const [error, setError] = useState("");
+  const [insightStatus, setInsightStatus] = useState<string | null>(null);
+  const resumeInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+
+  const exportReport = async () => {
+    try {
+      setIsExportingPDF(true);
+      const blob = await apiFetchBlob("/reports/me/dashboard.pdf");
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${profile?.full_name?.replace(/[^a-z0-9]/gi, "_").toLowerCase() || "student"}_dashboard.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : "Failed to export PDF.");
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
+  const load = async (showPageLoader = true) => {
+    try {
+      if (showPageLoader) setIsLoading(true);
+      setError("");
+      const [profilePayload, summaryPayload, resumePayload] = await Promise.all([
+        apiFetch<ProfileRead>("/profile/me"),
+        apiFetch<DashboardSummary>("/dashboard/summary"),
+        apiFetch<ResumeAnalysis | null>("/resume/latest"),
+      ]);
+      setProfile(profilePayload);
+      setSummary(summaryPayload);
+      setResume(resumePayload);
+      void (async () => {
+        const [logsResult, subjectProgressResult] = await Promise.allSettled([
+          fetchDashboardData<AssessmentLog[]>("/assessments/log"),
+          fetchDashboardData<SubjectProgress[]>("/assessments/subject-progress"),
+        ]);
+        const failures: string[] = [];
+        if (logsResult.status === "fulfilled") {
+          setAssessmentLogs(logsResult.value);
+        } else {
+          failures.push("assessment insights");
+        }
+        if (subjectProgressResult.status === "fulfilled") {
+          setSubjectProgress(subjectProgressResult.value);
+        } else {
+          failures.push("subject progress");
+        }
+        setInsightStatus(
+          failures.length
+            ? `${failures.join(" and ")} not available from the backend right now.`
+            : null,
+        );
+      })();
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : "Failed to load dashboard.");
+    } finally {
+      if (showPageLoader) setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const analysis = resume?.analysis;
+  const readinessScore = Math.round(summary?.readiness_score ?? 0);
+  const resumeScore = Math.round(analysis?.match_score ?? resume?.match_score ?? 0);
+  const score = readinessScore;
+  const readinessComponents = summary?.readiness_components ?? [];
+  const breakdown = normalizeScoreBreakdown(analysis?.score_breakdown);
+  const keywords = normalizeKeywords(analysis?.top_keywords);
+  const redFlags = normalizeRedFlags(analysis?.red_flags);
+  const activeTargetRole = profile?.focus_role?.trim() ?? "";
+  const showProfileOnlyInsightPrompt = hasOnlyProfileLinksWithoutInsights({
+    resume,
+    readinessComponents,
+    assessmentLogs,
+    subjectProgress,
+    breakdown,
+    keywords,
+    redFlags,
+  });
+
+  const readinessText = useMemo(() => {
+    if (readinessScore <= 0) return "Upload evidence or complete assessments to unlock CELTM readiness.";
+    if (score >= 80) return "Strong candidate - a few fixable gaps";
+    if (score >= 60) return "Good base - needs sharper proof";
+    return "Developing profile - build evidence first";
+  }, [readinessScore, score]);
+
+  const submitResume = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!file) {
+      setError("Select a resume PDF, DOCX, or TXT file.");
+      return;
+    }
+    if (!activeTargetRole) {
+      setError("Set your career aim in Settings before analyzing a resume.");
+      return;
+    }
+    try {
+      setIsUploading(true);
+      setIsResumeComplete(false);
+      setError("");
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("target_role", activeTargetRole);
+      const payload = await apiFetch<ResumeAnalysis>("/resume/analyze", {
+        method: "POST",
+        body: formData,
+      });
+      setResume(payload);
+      setFile(null);
+      if (resumeInputRef.current) {
+        resumeInputRef.current.value = "";
+      }
+      await refreshProfile();
+      await load(false);
+      setIsResumeComplete(true);
+      await new Promise((resolve) => window.setTimeout(resolve, 650));
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : "Resume analysis failed.");
+    } finally {
+      setIsUploading(false);
+      setIsResumeComplete(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <CeltmProgressLoader
+        title="Loading dashboard"
+        caption="Cooking your profile"
+        minHeightClassName="min-h-[80vh]"
+        stages={["Fetching your profile", "Reading latest resume analysis", "Syncing readiness score", "Preparing dashboard"]}
+      />
+    );
+  }
+
   return (
-    <div className="rounded-3xl border border-dashed border-outline-variant/20 dark:border-transparent bg-surface-container-low px-5 py-6">
-      <h4 className="text-sm font-bold text-on-surface">{title}</h4>
-      <p className="mt-2 text-sm leading-6 text-on-surface-variant">{body}</p>
-      <Link
-        href={actionHref}
-        className="mt-4 inline-flex rounded-full bg-primary/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-primary transition hover:bg-primary/15"
+    <div className="mx-auto w-full max-w-[1320px] space-y-8 pb-12">
+      {error ? (
+        <div className="rounded-3xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-sm font-semibold text-red-500">
+          {error}
+        </div>
+      ) : null}
+      {insightStatus ? (
+        <div className="rounded-3xl border border-amber-500/20 bg-amber-500/10 px-5 py-4 text-sm font-semibold text-amber-700 dark:text-amber-300">
+          {insightStatus}
+        </div>
+      ) : null}
+
+      <Motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="clay-card overflow-hidden rounded-[36px] p-7 md:p-9"
       >
-        {actionLabel}
-      </Link>
+        <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div className="flex flex-col md:flex-row md:items-start md:justify-between col-span-1 lg:col-span-2 mb-4">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.24em] text-primary">Student Dashboard</p>
+              <h1 className="mt-3 text-4xl font-black tracking-tight text-on-surface md:text-5xl">
+                {profile?.full_name || user?.name || "CELTM Student"}
+              </h1>
+            </div>
+            <div className="mt-4 md:mt-0 flex items-center gap-3">
+              <button
+                onClick={() => void exportReport()}
+                disabled={isExportingPDF}
+                className="flex items-center gap-2 rounded-2xl bg-primary/10 hover:bg-primary/20 px-4 py-2 text-xs font-black uppercase tracking-widest text-primary transition-colors"
+              >
+                <AppIcon name="file_download" className="h-4 w-4" />
+                {isExportingPDF ? "..." : "Export Full Report"}
+              </button>
+            </div>
+          </div>
+          <div>
+            <p className="max-w-2xl text-lg leading-8 text-on-surface-variant">
+              Phase 1 starts with resume analysis. Upload once, then use rule-based assessments to raise your readiness score.
+            </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              <Stat label="Institute" value={profile?.institution_name || user?.institutionName || "Not set"} />
+              <Stat label="Department" value={profile?.department_name || user?.departmentName || "Not set"} />
+              <Stat label="Target" value={activeTargetRole || "Set in settings"} />
+            </div>
+          </div>
+
+          <form onSubmit={submitResume} className="rounded-[30px] bg-surface-container-low p-5">
+            <h2 className="text-xl font-black tracking-tight text-on-surface">Upload resume to continue</h2>
+            <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+              AI is used here only for resume checking. The target role is locked to the career aim saved in Settings.
+            </p>
+            <div className="mt-5 rounded-2xl border border-outline-variant/20 bg-surface px-4 py-3">
+              <span className="block text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Active career aim</span>
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-black text-on-surface">
+                  {activeTargetRole || "Set your career aim in Settings first"}
+                </p>
+                <Link href="/settings" className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">
+                  Change in settings
+                </Link>
+              </div>
+            </div>
+            <label className="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-outline-variant/25 bg-surface px-5 py-8 text-center transition hover:border-primary/40">
+              <AppIcon name="upload_file" className="h-10 w-10 text-primary" />
+              <span className="mt-3 text-sm font-bold text-on-surface">{file?.name || "Choose resume file"}</span>
+              <span className="mt-1 text-xs text-on-surface-variant">PDF, DOCX, or TXT</span>
+              <input ref={resumeInputRef} type="file" accept=".pdf,.docx,.txt" className="hidden" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+            </label>
+            <button
+              type="submit"
+              disabled={isUploading || !activeTargetRole}
+              className="mt-5 h-13 w-full rounded-2xl bg-primary px-5 py-4 text-[11px] font-black uppercase tracking-[0.18em] text-white transition hover:opacity-90 disabled:opacity-60"
+            >
+              {!activeTargetRole ? "Set career aim in settings" : isUploading ? "Analyzing..." : resume ? "Re-analyze resume" : "Analyze resume"}
+            </button>
+          </form>
+        </div>
+      </Motion.section>
+
+      {!resume ? (
+        <Motion.section
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-[34px] border border-outline-variant/15 bg-surface-container-low p-7"
+        >
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">No resume?</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-on-surface">Update your career aim without a resume in Settings</h2>
+          <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-on-surface-variant">
+            The draft digital CELTM personality now lives in Settings. Go there to add temporary interests, strengths, preferred industries, links, and career aim signals before uploading a resume.
+          </p>
+          <Link
+            href="/settings?tab=career"
+            className="mt-5 inline-flex rounded-2xl bg-primary px-5 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/20"
+          >
+            Go to settings
+          </Link>
+        </Motion.section>
+      ) : null}
+
+      {isUploading ? (
+        <CeltmProgressLoader
+          title="Resume analysis"
+          caption="Cooking your resume"
+          forceComplete={isResumeComplete}
+          stages={["Extracting resume text", "Checking role keywords", "Scoring evidence strength", "Updating readiness"]}
+        />
+      ) : !resume && readinessScore <= 0 ? (
+        <Motion.section
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+          className="rounded-[36px] border border-dashed border-outline-variant/25 bg-surface-container-low p-10 text-center"
+        >
+          <h2 className="text-2xl font-black tracking-tight text-on-surface">No resume analysis yet</h2>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-on-surface-variant">
+            Your dashboard stays intentionally simple until the resume is uploaded. After analysis, assessments and career aim tracking become meaningful.
+          </p>
+        </Motion.section>
+      ) : (
+        <>
+          <Motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="relative overflow-hidden rounded-[36px] bg-[#1f201e] p-6 text-white shadow-2xl"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent pointer-events-none" />
+            <div className="relative grid gap-8 md:grid-cols-[150px_1fr] md:items-center">
+              <div className="relative mx-auto flex h-32 w-32 items-center justify-center">
+                <svg className="absolute inset-0 h-full w-full -rotate-90 transform" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(16,185,129,0.2)" strokeWidth="8" />
+                  <Motion.circle
+                    cx="50" cy="50" r="45" fill="none"
+                    stroke="#34d399" strokeWidth="8"
+                    strokeDasharray="283" strokeDashoffset={283 - (283 * score) / 100}
+                    strokeLinecap="round"
+                    initial={{ strokeDashoffset: 283 }}
+                    animate={{ strokeDashoffset: 283 - (283 * score) / 100 }}
+                    transition={{ duration: 1.5, ease: "easeOut" }}
+                  />
+                </svg>
+                <div className="text-3xl font-black text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">
+                  {score}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white/60">Readiness score</p>
+                <div className="mt-1 flex items-end gap-1">
+                  <span className="text-5xl font-black text-emerald-400">{score}</span>
+                  <span className="pb-2 text-2xl font-black text-white/70">/100</span>
+                </div>
+                <p className="mt-2 font-bold text-white/70">{analysis?.verdict || readinessText}</p>
+                <p className="mt-4 max-w-3xl text-lg font-bold leading-8 text-white">
+                  {showProfileOnlyInsightPrompt
+                    ? "Your readiness currently comes only from validated profile links. Add more about yourself and explore assessments to unlock actual CELTM insights."
+                    : analysis?.summary || "Your readiness is calculated from the active resume, assessments, written work, and credential evidence available for your profile."}
+                </p>
+              </div>
+            </div>
+          </Motion.section>
+
+          {readinessComponents.length > 0 ? (
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {readinessComponents.map((component) => (
+                <div key={component.key} className="clay-card rounded-[28px] p-5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">
+                    {component.label}
+                  </p>
+                  <p className="mt-3 text-3xl font-black text-on-surface">{Math.round(component.score)}%</p>
+                  <p className="mt-1 text-xs font-bold text-primary">
+                    {Math.round(component.effective_weight * 100)}% of readiness
+                  </p>
+                </div>
+              ))}
+            </section>
+          ) : null}
+
+          {showProfileOnlyInsightPrompt ? (
+            <ProfileOnlyInsightPrompt />
+          ) : (
+            <>
+          <section className="grid gap-7 xl:grid-cols-2">
+            <div className="relative overflow-hidden rounded-[32px] p-1 bg-gradient-to-br from-primary/30 via-transparent to-primary/10">
+              <div className="clay-card rounded-[30px] p-7 h-full relative z-10 bg-surface/90 backdrop-blur-xl">
+                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-on-surface-variant flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                  Resume score breakdown
+                </h2>
+                <p className="mt-2 text-sm font-bold text-on-surface-variant">
+                  Resume match: {resume ? `${resumeScore}%` : "Pending"}
+                </p>
+                <div className="mt-6 grid gap-4">
+                  {breakdown.length ? breakdown.map((item, index) => (
+                    <div key={`${item.label}-${index}`} className="group">
+                      <div className="mb-2 flex items-center justify-between text-sm font-bold text-on-surface transition-colors group-hover:text-primary">
+                        <span>{item.label}</span>
+                        <span className="text-on-surface-variant">{formatBreakdownScore(item)}</span>
+                      </div>
+                      <div className="h-2.5 rounded-full bg-surface-container-highest overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-400 relative"
+                          style={{ width: `${breakdownProgressPercent(item)}%` }}
+                        >
+                           <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]" />
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                    <p className="rounded-2xl bg-surface-container-low px-4 py-4 text-sm text-on-surface-variant">
+                      Upload or analyze a resume to see recruiter-facing score details.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden rounded-[32px] p-1 bg-gradient-to-br from-emerald-500/20 via-transparent to-amber-500/20">
+              <div className="clay-card rounded-[30px] p-7 h-full relative z-10 bg-surface/90 backdrop-blur-xl">
+                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-on-surface-variant flex items-center gap-2">
+                  <AppIcon name="stars" className="h-4 w-4 text-emerald-500" />
+                  Top 5 Keywords
+                </h2>
+                <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                  {keywords.map((item, index) => (
+                    <div key={`${item.rank}-${item.keyword}-${index}`} className="relative group overflow-hidden rounded-[24px] border border-outline-variant/15 bg-surface p-5 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:-translate-y-1 transition-all duration-300">
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="relative z-10">
+                        <div className="flex justify-between items-start mb-2">
+                          <p className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-black text-primary">#{item.rank}</p>
+                          <span className="inline-flex rounded-full bg-emerald-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-600">
+                            {item.badge || item.status}
+                          </span>
+                        </div>
+                        <h3 className="mt-2 text-lg font-black text-on-surface tracking-tight">{item.keyword}</h3>
+                        <p className="mt-2 text-xs leading-5 text-on-surface-variant line-clamp-2">{item.detail}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {!keywords.length ? (
+                    <p className="rounded-2xl bg-surface-container-low px-4 py-4 text-sm font-semibold text-on-surface-variant">
+                      Keyword insights are not available from the current evidence yet. Add a resume or complete assessments to generate them.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="relative overflow-hidden rounded-[32px] p-1 bg-gradient-to-r from-red-500/30 to-orange-500/20 mt-2">
+            <div className="clay-card rounded-[30px] p-7 h-full relative z-10 bg-surface/95 backdrop-blur-xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="h-10 w-10 rounded-2xl bg-red-500/10 flex items-center justify-center animate-pulse">
+                  <AppIcon name="warning" className="h-5 w-5 text-red-500" />
+                </div>
+                <h2 className="text-sm font-black uppercase tracking-[0.2em] text-red-500">3 Red Flags - Spotted in under 10 seconds</h2>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-3">
+                {redFlags.map((flag, index) => (
+                  <div key={`${flag.title}-${index}`} className="group relative overflow-hidden rounded-[24px] bg-surface-container-low p-6 transition-all duration-300 hover:shadow-lg border border-red-500/10 hover:border-red-500/40">
+                    <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-red-500/5 transition-transform duration-700 group-hover:scale-[2]" />
+                    <div className="relative z-10">
+                      <h3 className="font-black text-on-surface text-lg leading-tight">{flag.title}</h3>
+                      <p className="mt-3 text-xs leading-relaxed text-on-surface-variant">{flag.reason}</p>
+                      <div className="mt-5 rounded-2xl bg-surface-container-high p-4 border border-outline-variant/10">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-emerald-500 mb-1.5 flex items-center gap-1">
+                          <AppIcon name="build" className="h-3 w-3" />
+                          Quick Fix
+                        </p>
+                        <p className="text-xs font-bold text-on-surface leading-tight">{flag.fix}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {!redFlags.length ? (
+                  <p className="sm:col-span-3 rounded-2xl bg-surface-container-low px-4 py-4 text-sm font-semibold text-on-surface-variant">
+                    Red-flag insights are not available from the current evidence yet. Add more profile detail or upload a resume to run the recruiter screen.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </section>
+            </>
+          )}
+
+          <section className="grid gap-4 sm:grid-cols-2">
+            <Link href="/assessments" className="rounded-[28px] bg-primary px-6 py-5 text-sm font-black uppercase tracking-[0.18em] text-white">
+              Take assessments to improve score
+            </Link>
+            <Link href="/career-aim" className="rounded-[28px] bg-surface-container-high px-6 py-5 text-sm font-black uppercase tracking-[0.18em] text-on-surface">
+              Analyze career aim
+            </Link>
+          </section>
+
+          <SubjectProgressCards subjects={subjectProgress} />
+
+          {assessmentLogs.length > 0 && (
+            <Motion.section
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="clay-card rounded-[32px] p-7 mt-8"
+            >
+              <h2 className="text-sm font-black uppercase tracking-[0.2em] text-on-surface-variant mb-6">Exam Analytics History</h2>
+              <div className="space-y-4">
+                {assessmentLogs.map((log) => (
+                  <AssessmentLogCard key={log.id} log={log} />
+                ))}
+              </div>
+            </Motion.section>
+          )}
+        </>
+      )}
     </div>
   );
 }
 
-function buildLoadWarning(failedSections: Array<{ label: string; reason: unknown }>, fallback: string) {
-  if (!failedSections.length) {
-    return null;
-  }
-
-  const labels = failedSections.map((section) => section.label).join(", ");
-  const detail = getApiErrorMessage(failedSections[0].reason, fallback);
-  return `Some live dashboard data is unavailable right now (${labels}). ${detail}`;
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-3xl bg-surface-container-low px-5 py-4 border border-outline-variant/10 shadow-sm transition hover:shadow-md">
+      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">{label}</p>
+      <p className="mt-2 truncate text-sm font-black text-on-surface">{value}</p>
+    </div>
+  );
 }
 
-export default function DashboardPage() {
-  const { user, isLoading: isAuthLoading } = useAuth();
-  
-  // Split state into granular pieces to prevent full-page re-renders
-  const [summary, setSummary] = useState<DashboardSummary>(emptySummary);
-  const [roleFit, setRoleFit] = useState<RoleFitRead>(emptyRoleFit);
-  const [skills, setSkills] = useState<SkillRead[]>([]);
-  const [gaps, setGaps] = useState<SkillGapRead[]>([]);
-  const [profile, setProfile] = useState<ProfileRead>(emptyProfile);
-  const [artifacts, setArtifacts] = useState<ArtifactRead[]>([]);
-  const [events, setEvents] = useState<ScheduleEvent[]>([]);
-  const [latestReport, setLatestReport] = useState<ReportRead | null>(null);
-
-  const [isSummaryLoading, setIsSummaryLoading] = useState(true);
-  const [isPathLoading, setIsPathLoading] = useState(true);
-  const [isLoading, setIsLoading] = useState(true); // Global fallback 
-  const [error, setError] = useState<string | null>(null);
-  const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
-  const [selectedLogEntry, setSelectedLogEntry] = useState<AssessmentLogEntry | null>(null);
-
-  const isSummaryLoaded = summary.user_id !== "" && !isSummaryLoading;
-  const isProfileLoaded = profile.id !== "";
-
-  useEffect(() => {
-    if (isAuthLoading || !user?.id) {
-      return;
-    }
-
-    let isMounted = true;
-
-    const fetchSummary = async (options = {}) => {
-        try {
-            const res = await apiFetch<DashboardSummary>("/dashboard/summary", options);
-            if (isMounted) setSummary(res);
-        } catch (e) { console.error("Summary fetch failed", e); }
-    };
-
-    const fetchSkills = async (options = {}) => {
-        try {
-            const [sk, gp, rf] = await Promise.all([
-                apiFetch<SkillRead[]>("/skills/me", options),
-                apiFetch<SkillGapRead[]>("/skills/me/gaps", options),
-                apiFetch<RoleFitRead>("/skills/me/role-fit", options)
-            ]);
-            if (isMounted) {
-                setSkills(sk);
-                setGaps(gp);
-                setRoleFit(rf);
-            }
-        } catch (e) { console.error("Skills fetch failed", e); }
-    };
-
-    const fetchProfileData = async (options = {}) => {
-        try {
-            const [pr, ar, rep] = await Promise.all([
-                apiFetch<ProfileRead>("/profile/me", options),
-                apiFetch<ArtifactRead[]>("/profile/me/artifacts", options),
-                apiFetch<ReportRead | null>("/reports/me/latest", options)
-            ]);
-            if (isMounted) {
-                setProfile(pr);
-                setArtifacts(ar);
-                setLatestReport(rep);
-            }
-        } catch (e) { console.error("Profile data fetch failed", e); }
-    };
-
-    const fetchSchedule = async (options = {}) => {
-        try {
-            const res = await apiFetch<CursorPage<ScheduleEvent>>("/schedule/events?limit=50", options);
-            if (isMounted) setEvents(res.items);
-        } catch (e) { console.error("Schedule fetch failed", e); }
-    };
-
-    const loadDashboard = async (revalidate = false) => {
-      try {
-        if (!revalidate) {
-          setIsLoading(true);
-          setIsSummaryLoading(true);
-        }
-        setError(null);
-
-        const fetchOptions = { revalidate };
-        
-        // Execute fetches and update their specific loading states
-        const summaryTask = fetchSummary(fetchOptions).finally(() => {
-          if (isMounted) setIsSummaryLoading(false);
-        });
-        
-        const otherTasks = Promise.allSettled([
-            fetchSkills(fetchOptions),
-            fetchProfileData(fetchOptions),
-            fetchSchedule(fetchOptions)
-        ]);
-
-        // Global isLoading stays until summary is at least attempted
-        await Promise.allSettled([summaryTask, otherTasks]);
-
-      } catch (caught) {
-        if (isMounted) setError(getApiErrorMessage(caught, "Failed to load dashboard."));
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-          setIsSummaryLoading(false); 
-        }
-      }
-    };
-
-    // Initial load: Fetch once. If revalidate is true, apiFetch handles background refresh.
-    void loadDashboard(false);
-    
-    // Subscribe to real-time updates via Supabase
-    const summaryChannel = supabase
-      .channel("dashboard-realtime-summary")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "assessments" },
-        () => void fetchSummary({ revalidate: true }),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "written_assessments" },
-        () => void fetchSummary({ revalidate: true }),
-      )
-      .subscribe();
-
-    const reportChannel = supabase
-      .channel("dashboard-realtime-reports")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "reports" },
-        () => void fetchProfileData({ revalidate: true }),
-      )
-      .subscribe();
-
-    return () => {
-      isMounted = false;
-      void supabase.removeChannel(summaryChannel);
-      void supabase.removeChannel(reportChannel);
-    };
-  }, [user?.id, isAuthLoading]);
-
-
-  const topSkills = useMemo(
-    () => [...skills].sort((left, right) => right.verified_score - left.verified_score).slice(0, 5),
-    [skills],
+function ProfileOnlyInsightPrompt() {
+  return (
+    <section className="rounded-[34px] border border-dashed border-primary/25 bg-primary/5 p-7">
+      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">Insights need more evidence</p>
+      <h2 className="mt-2 text-2xl font-black tracking-tight text-on-surface">Add more about yourself and explore assessments to see insights</h2>
+      <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-on-surface-variant">
+        CELTM has analyzed your profile links, but there is not enough resume, assessment, written, or credential evidence to generate trustworthy keyword, red-flag, and career-readiness insights yet.
+      </p>
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+        <Link
+          href="/settings"
+          className="rounded-2xl bg-surface px-5 py-3 text-center text-[11px] font-black uppercase tracking-[0.18em] text-primary"
+        >
+          Add more about yourself
+        </Link>
+        <Link
+          href="/assessments"
+          className="rounded-2xl bg-primary px-5 py-3 text-center text-[11px] font-black uppercase tracking-[0.18em] text-white"
+        >
+          Explore assessments
+        </Link>
+      </div>
+    </section>
   );
-  
-  const topGaps = useMemo(() => gaps.slice(0, 5), [gaps]);
-  
-  const displayName =
-    profile.full_name || profile.email?.split("@")[0] || "New candidate";
-    
-  const focusRole = profile.focus_role || roleFit.role_name || "Choose a focus role";
-  
-  const readiness = isSummaryLoaded
-    ? summary.readiness_score
-    : null;
+}
 
-  const selectedSkill = topSkills.find((skill) => skill.skill_id === selectedSkillId) ?? null;
-  const chartFocusSkill = selectedSkill ?? topSkills[0] ?? null;
-  
-  const skillChartItems = useMemo(() => {
-    if (topSkills.length > 0) {
-      return topSkills.map((skill, index) => ({
-        id: skill.skill_id,
-        label: skill.skill_name,
-        value: Math.max(skill.verified_score, 1),
-        color: ["#6366F1", "#8B5CF6", "#14B8A6", "#F59E0B", "#EC4899"][index % 5],
-      }));
-    }
-    
-    // Fallback to domain breakdown if no verified skills yet
-    if (summary.domain_breakdown && Object.keys(summary.domain_breakdown).length > 0) {
-      return Object.entries(summary.domain_breakdown).map(([domain, score], index) => ({
-        id: domain,
-        label: domain,
-        value: Math.max(score, 1),
-        color: ["#6366F1", "#8B5CF6", "#14B8A6", "#F59E0B", "#EC4899"][index % 5],
-      }));
-    }
-    
-    return [];
-  }, [topSkills, summary.domain_breakdown]);
-
-  const refreshScheduleOnly = async () => {
-    try {
-      const payload = await apiFetch<CursorPage<ScheduleEvent>>("/schedule/events?limit=50");
-      setEvents(payload.items);
-    } catch (e) {
-      console.error("Schedule refresh failed", e);
-    }
-  };
-
-  const handleCreateScheduleEvent = async (payload: ScheduleEventPayload) => {
-    try {
-      await apiFetch<ScheduleEvent>("/schedule/events", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
-      await refreshScheduleOnly();
-    } catch (caught) {
-      throw new Error(getApiErrorMessage(caught, "Failed to create the schedule event."));
-    }
-  };
-
-  const handleUpdateScheduleEvent = async (eventId: string, payload: ScheduleEventPayload) => {
-    try {
-      await apiFetch<ScheduleEvent>(`/schedule/events/${eventId}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      });
-      await refreshScheduleOnly();
-    } catch (caught) {
-      throw new Error(getApiErrorMessage(caught, "Failed to update the schedule event."));
-    }
-  };
-
-  const handleDeleteScheduleEvent = async (eventId: string) => {
-    try {
-      await apiFetch<void>(`/schedule/events/${eventId}`, {
-        method: "DELETE",
-      });
-      await refreshScheduleOnly();
-    } catch (caught) {
-      throw new Error(getApiErrorMessage(caught, "Failed to delete the schedule event."));
-    }
-  };
+function AssessmentLogCard({ log }: { log: AssessmentLog }) {
+  const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="mx-auto w-full max-w-[1520px] space-y-6 animate-fade-in pb-10">
-      {error ? (
-        <div className="rounded-3xl border border-amber-500/20 bg-amber-500/10 px-6 py-5 text-sm text-amber-300">
-          {error}
-        </div>
-      ) : null}
-
-      <section className="clay-card relative overflow-hidden rounded-[32px] p-6 md:p-8 min-h-[400px]">
-        <div className="absolute right-0 top-0 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
-        {isProfileLoaded ? (
-          <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-2xl space-y-5">
-              <p className="text-[11px] font-black uppercase tracking-[0.24em] text-primary">
-                Live dashboard
-              </p>
-              <div>
-                <h1 className="text-4xl font-extrabold tracking-tight text-on-surface md:text-5xl">
-                  {displayName}
-                </h1>
-                <p className="mt-3 text-lg leading-8 text-on-surface-variant">
-                  {profile.headline
-                    ? `${profile.headline} preparing for ${focusRole}.`
-                    : `You are currently tracking toward ${focusRole}.`}
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-3xl bg-surface-container-low px-5 py-4">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">
-                    Focus role
-                  </p>
-                  <p className="mt-2 text-lg font-bold text-on-surface">{focusRole}</p>
-                </div>
-                <div className="rounded-3xl bg-surface-container-low px-5 py-4">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">
-                    Weekly goal
-                  </p>
-                  <p className="mt-2 text-lg font-bold text-on-surface">
-                    {profile.weekly_goal || "Set your first weekly goal in settings."}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Link
-                  href="/assessments"
-                  className="inline-flex rounded-full bg-gradient-to-r from-primary to-secondary px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white shadow-[0_0_20px_rgba(99,102,241,0.25)]"
-                >
-                  Start assessments
-                </Link>
-                <Link
-                  href="/settings"
-                  className="inline-flex rounded-full bg-surface-container-high px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-on-surface"
-                >
-                  Update profile
-                </Link>
-              </div>
-            </div>
-
-            <div className="flex w-full max-w-sm shrink-0 flex-col items-center rounded-[32px] bg-surface-container-low px-8 py-10 text-center">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">
-                Overall readiness score
-              </p>
-              <div className="mt-5 flex h-40 w-40 items-center justify-center rounded-full border-[12px] border-primary/15 bg-primary/5">
-                <div>
-                  <p className="text-5xl font-extrabold tracking-tight text-on-surface">
-                    {isLoading ? (
-                      <span className="inline-block h-12 w-20 animate-pulse bg-on-surface/10 rounded-lg" />
-                    ) : (
-                      formatPercent(readiness)
-                    )}
-                  </p>
-                  <p className="mt-1 text-[11px] font-black uppercase tracking-[0.22em] text-primary">
-                    {isLoading ? (
-                      <span className="inline-block h-3 w-24 animate-pulse bg-primary/20 rounded-full" />
-                    ) : (
-                      roleFit.role_name || "Unassigned"
-                    )}
-                  </p>
-                </div>
-              </div>
-              <p className="mt-5 text-sm leading-6 text-on-surface-variant">
-                {topSkills.length
-                  ? `${topSkills.length} verified skills are feeding this score.`
-                  : "No verified skills yet. Your score will update as you complete assessments and upload evidence."}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between py-4">
-            <div className="max-w-2xl w-full space-y-5">
-              <div className="h-4 w-32 animate-pulse bg-primary/10 rounded-full" />
-              <div className="h-12 w-64 animate-pulse bg-on-surface/10 rounded-3xl" />
-              <div className="h-6 w-full animate-pulse bg-on-surface/5 rounded-2xl" />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="h-24 animate-pulse bg-surface-container-low rounded-3xl" />
-                <div className="h-24 animate-pulse bg-surface-container-low rounded-3xl" />
-              </div>
-            </div>
-            <div className="h-64 w-64 animate-pulse bg-surface-container-high rounded-full mx-auto" />
-          </div>
-        )}
-      </section>
-
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {isSummaryLoaded ? [
-          {
-            label: "Verified skills",
-            value: isSummaryLoaded ? String(skills.length) : "--",
-            detail: isSummaryLoaded && topSkills.length ? `${topSkills[0].skill_name} is currently strongest.` : "No skills recorded yet.",
-          },
-          {
-            label: "Role match",
-            value: isSummaryLoaded ? formatPercent(roleFit.fit_score) : "--",
-            detail: (isSummaryLoaded && roleFit.role_name) || "No active role match yet.",
-          },
-          {
-            label: "Hidden skill queue",
-            value: isSummaryLoaded ? String(summary.pending_hidden_skills) : "--",
-            detail: isSummaryLoaded && summary.pending_hidden_skills
-              ? "Pending discoveries need review."
-              : "No pending hidden skills right now.",
-          },
-          {
-            label: "Uploaded evidence",
-            value: isSummaryLoaded ? String(artifacts.length) : "--",
-            detail: isSummaryLoaded && artifacts.length
-              ? `${artifacts.length} artifact${artifacts.length === 1 ? "" : "s"} stored.`
-              : "No portfolio evidence uploaded yet.",
-          },
-        ].map((item) => (
-          <div key={item.label} className="clay-card lift-card rounded-[28px] p-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">
-              {item.label}
-            </p>
-            <p className="mt-4 text-4xl font-extrabold tracking-tight text-on-surface">{item.value}</p>
-            <p className="mt-3 text-sm leading-6 text-on-surface-variant">{item.detail}</p>
-          </div>
-        )) : (
-          Array.from({ length: 4 }).map((_, i) => (
-            <StatCardSkeleton key={i} />
-          ))
-        )}
-      </section>
-
-      <section className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="clay-card rounded-[32px] p-8">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight text-on-surface">Top verified skills</h2>
-              <p className="mt-1 text-sm text-on-surface-variant">
-                Live scores from your persisted skill records. Click a skill to inspect the verification breakdown.
-              </p>
-            </div>
-            <Link
-              href="/skill-profile"
-              className="text-[11px] font-black uppercase tracking-[0.18em] text-primary"
-            >
-              Open profile
-            </Link>
-          </div>
-
-          {isSummaryLoading ? (
-            <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-              <div className="flex flex-col items-center justify-center rounded-3xl bg-surface-container-low px-4 py-6">
-                <div className="h-48 w-48 rounded-full border-[12px] border-surface-container animate-pulse" />
-                <div className="mt-6 h-4 w-32 rounded-full bg-surface-container animate-pulse" />
-              </div>
-              <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="h-20 w-full rounded-3xl bg-surface-container-low animate-pulse" />
-                ))}
-              </div>
-            </div>
-          ) : skillChartItems.length ? (
-            <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-              <div className="flex flex-col items-center justify-center rounded-3xl bg-surface-container-low px-4 py-6">
-                <SkillDonutChart
-                  items={skillChartItems}
-                  selectedId={selectedSkillId ?? topSkills[0]?.skill_id ?? null}
-                  onSelect={(item) => setSelectedSkillId(item.id)}
-                  centerLabel={
-                    selectedSkill ? "Selected skill" : chartFocusSkill ? "Top skill" : "Verified mix"
-                  }
-                  centerValue={formatPercent(chartFocusSkill?.verified_score ?? readiness)}
-                />
-                <p className="mt-4 text-center text-sm leading-6 text-on-surface-variant">
-                  {topSkills.length > 0 ? "The donut reflects which verified skills are carrying the current dashboard readiness." : "The donut reflects your current domain readiness based on initial placement results."}
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                {(topSkills.length > 0 ? topSkills : skillChartItems).map((item, index) => {
-                  const isSkill = 'skill_id' in item;
-                  const label = isSkill ? item.skill_name : item.label;
-                  const id = isSkill ? item.skill_id : item.id;
-                  const score = isSkill ? item.verified_score : item.value;
-                  const updatedAt = isSkill ? item.updated_at : null;
-
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => isSkill && setSelectedSkillId(id)}
-                      className={`lift-tile block w-full rounded-3xl border px-5 py-4 text-left transition ${
-                        selectedSkillId === id
-                          ? "border-primary/35 bg-primary/10"
-                          : "border-outline-variant/12 dark:border-transparent bg-surface-container-low hover:border-primary/20"
-                      } ${!isSkill ? "cursor-default" : ""}`}
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <span
-                            className="h-4 w-4 rounded-full"
-                            style={{ backgroundColor: skillChartItems[index]?.color ?? "#6366F1" }}
-                          />
-                          <div>
-                            <h3 className="text-base font-bold text-on-surface">{label}</h3>
-                            <p className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                              {updatedAt ? `Updated ${formatRelativeTime(updatedAt)}` : "Initial Projection"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-extrabold tracking-tight text-on-surface">
-                            {formatPercent(score)}
-                          </p>
-                          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">
-                            {isSkill ? "Verified" : "Readiness"}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-
-            <EmptyPanel
-              title="No verified skills yet"
-              body="Your dashboard is now reading live data, so new accounts stay empty until you actually create assessments or import evidence."
-              actionHref="/assessments"
-              actionLabel="Create first assessment"
-            />
-          )}
-        </div>
-
-        <div className="clay-card rounded-[32px] p-8">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight text-on-surface">Priority gaps</h2>
-              <p className="mt-1 text-sm text-on-surface-variant">
-                Highest-severity gaps for your current target role.
-              </p>
-            </div>
-            <span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-primary">
-              {roleFit.role_name || "Unassigned"}
+    <div className="rounded-3xl border border-outline-variant/20 bg-surface shadow-sm transition hover:shadow-md overflow-hidden">
+      <div
+        className="p-5 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface-container-lowest transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
+              {log.type}
+            </span>
+            <span className="text-xs font-bold text-on-surface-variant">
+              {log.completed_at ? new Date(log.completed_at).toLocaleDateString() : "Pending"}
             </span>
           </div>
+          <h3 className="mt-3 text-lg font-black text-on-surface capitalize">{log.subject.replace(/_/g, " ")}</h3>
+          <p className="mt-1 text-sm text-on-surface-variant line-clamp-2">{log.insight}</p>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="flex-shrink-0 text-right sm:text-center">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full border-[4px] border-emerald-500/30">
+              <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{Math.round(log.score)}</span>
+            </div>
+            <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Score</div>
+          </div>
+          <AppIcon name="expand_more" className={`h-5 w-5 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
+        </div>
+      </div>
 
-          {topGaps.length ? (
-            <div className="space-y-4">
-              {topGaps.map((gap) => (
-                <div
-                  key={gap.skill_name}
-                  className="lift-tile rounded-3xl border border-outline-variant/12 dark:border-transparent bg-surface-container-low px-5 py-4"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <h3 className="text-base font-bold text-on-surface">{gap.skill_name}</h3>
-                      <p className="mt-1 text-sm text-on-surface-variant">
-                        Current score: {formatPercent(gap.user_score)}
-                      </p>
+      <AnimatePresence>
+        {expanded && (
+          <Motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="border-t border-outline-variant/15 bg-surface-container-lowest"
+          >
+            <div className="p-6 grid gap-6 md:grid-cols-2">
+              <div className="space-y-4">
+                {log.analytics && typeof log.analytics.total === "number" && log.analytics.total > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-2xl bg-emerald-500/10 p-3 text-center">
+                      <span className="block text-2xl font-black text-emerald-600">{log.analytics.correct ?? 0}</span>
+                      <span className="text-[10px] uppercase tracking-wider text-emerald-600/70 font-bold">Correct</span>
                     </div>
-                    <div className="text-right">
-                      <p className="text-lg font-extrabold tracking-tight text-on-surface">
-                        {(gap.gap_severity * 100).toFixed(1)}
-                      </p>
-                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-primary">
-                        Gap severity
-                      </p>
+                    <div className="rounded-2xl bg-red-500/10 p-3 text-center">
+                      <span className="block text-2xl font-black text-red-500">{log.analytics.wrong ?? 0}</span>
+                      <span className="text-[10px] uppercase tracking-wider text-red-500/70 font-bold">Wrong</span>
+                    </div>
+                    <div className="rounded-2xl bg-surface-container-high p-3 text-center">
+                      <span className="block text-2xl font-black text-on-surface">{log.analytics.total ?? 0}</span>
+                      <span className="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Total</span>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyPanel
-              title="No gap analysis yet"
-              body="Once a focus role has requirements and your first live skill scores arrive, the dashboard will rank your missing areas here."
-              actionHref="/settings"
-              actionLabel="Set focus role"
-            />
-          )}
-        </div>
-      </section>
+                )}
 
-      <section className="grid gap-8 xl:grid-cols-3">
-        {/* Left column: Schedule & Exam Log */}
-        <div className="flex flex-col gap-8 xl:col-span-2">
-          <div className="clay-card rounded-[32px] p-6 md:p-8">
-            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                {log.areas_of_betterment && log.areas_of_betterment.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-red-400 mb-2">Areas for Betterment</h4>
+                    <ul className="space-y-1">
+                      {log.areas_of_betterment.map((area, i) => (
+                        <li key={i} className="text-sm flex items-start gap-2 text-on-surface-variant">
+                          <AppIcon name="warning" className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                          {area}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
               <div>
-                <h2 className="text-2xl font-bold tracking-tight text-on-surface">Upcoming schedule</h2>
-                <p className="mt-1 text-sm text-on-surface-variant">
-                  Live schedule records from your account in editable calendar form.
-                </p>
-              </div>
-            </div>
-
-            <SchedulePlanner
-              events={events}
-              onCreate={handleCreateScheduleEvent}
-              onUpdate={handleUpdateScheduleEvent}
-              onDelete={handleDeleteScheduleEvent}
-            />
-          </div>
-
-          <div className="clay-card rounded-[32px] p-6 md:p-8">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight text-on-surface">Exam log</h2>
-                <p className="mt-1 text-sm text-on-surface-variant">
-                  Detailed results from your MCQ, situational, and written assessments.
-                </p>
-              </div>
-              <Link
-                href="/assessments"
-                className="text-[11px] font-black uppercase tracking-[0.18em] text-primary"
-              >
-                New Assessment
-              </Link>
-            </div>
-
-            <ExamLog onEntryClick={setSelectedLogEntry} />
-          </div>
-        </div>
-
-        {/* Right column: Latest Report & Account Snapshot */}
-        <div className="flex flex-col gap-8 xl:col-span-1">
-          <div className="clay-card flex flex-col rounded-[32px] p-6 md:p-8">
-            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between xl:flex-col xl:items-start">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight text-on-surface">Latest report</h2>
-                <p className="mt-1 text-sm text-on-surface-variant">
-                  Most recent generated profile summary.
-                </p>
-              </div>
-              <span className="rounded-full bg-surface-container-high px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-on-surface-variant shrink-0">
-                {latestReport?.created_at ? formatDate(latestReport.created_at) : "No report"}
-              </span>
-            </div>
-
-            {latestReport ? (
-              <div className="space-y-4">
-                <div className="lift-tile rounded-3xl border border-outline-variant/12 dark:border-transparent bg-surface-container-low px-4 py-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">
-                    Report id
-                  </p>
-                  <p className="mt-1 break-all text-xs font-bold text-on-surface">{latestReport.id}</p>
-                </div>
-                <div className="lift-tile flex-1 rounded-3xl border border-outline-variant/12 dark:border-transparent bg-surface-container-low px-4 py-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">
-                    Summary snapshot
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-on-surface-variant">
-                    The report payload is stored live. Latest generation ran{" "}
-                    {formatRelativeTime(latestReport.created_at)}.
-                  </p>
+                {log.hidden_skills && log.hidden_skills.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-primary mb-3">Hidden Skills Unlocked</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {log.hidden_skills.map((skill, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs font-bold text-primary">
+                          <AppIcon name="psychology" className="h-3.5 w-3.5" />
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="mt-6">
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        const blob = await apiFetchBlob(`/reports/assessment/${log.id}.pdf`);
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `assessment-report-${log.id}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                      } catch {
+                        alert("Failed to download assessment report.");
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white transition hover:-translate-y-0.5 hover:shadow-lg"
+                  >
+                    <AppIcon name="download" className="h-4 w-4" />
+                    Download Detailed Report
+                  </button>
                 </div>
               </div>
-            ) : (
-              <EmptyPanel
-                title="No report generated"
-                body="This section stays empty until a report is generated."
-                actionHref="/assessments"
-                actionLabel="Build report"
-              />
-            )}
-          </div>
-
-          <div className="clay-card rounded-[32px] p-6 md:p-8">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold tracking-tight text-on-surface">Account snapshot</h2>
-              <p className="mt-1 text-sm text-on-surface-variant">
-                Persisted identity data.
-              </p>
             </div>
-
-            <div className="space-y-3">
-              {[
-                { label: "Email", value: profile.email || "Not available" },
-                { label: "Current role", value: profile.headline || "Not set yet" },
-                { label: "Focus role", value: profile.focus_role || "Not set yet" },
-                { label: "Weekly goal", value: profile.weekly_goal || "Not set yet" },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="lift-tile rounded-[20px] border border-outline-variant/12 dark:border-transparent bg-surface-container-low px-4 py-3"
-                >
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">
-                    {item.label}
-                  </p>
-                  <p className="mt-1 text-sm font-bold text-on-surface">{item.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <SkillInsightModal
-        skill={selectedSkill}
-        onClose={() => setSelectedSkillId(null)}
-      />
-
-      <ExamInsightModal
-        entry={selectedLogEntry}
-        onClose={() => setSelectedLogEntry(null)}
-      />
-
-      <ResumeReminderPopup />
+          </Motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

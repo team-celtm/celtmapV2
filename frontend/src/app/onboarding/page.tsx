@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import AuthBackdrop from "@/components/auth/AuthBackdrop";
 import CeltmLogo from "@/components/CeltmLogo";
+import AppIcon from "@/components/AppIcon";
+import ThemedSelect from "@/components/ThemedSelect";
 import { useAuth } from "@/contexts/AuthContext";
 import { ApiError, apiFetch } from "@/lib/api";
 import type {
@@ -349,7 +351,7 @@ export default function OnboardingPage() {
                 ].map((item) => (
                   <div key={item} className="flex items-start gap-4">
                     <div className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-blue-400">
-                      <span className="material-symbols-outlined text-[16px] font-bold">check</span>
+                      <AppIcon name="check" className="h-4 w-4" strokeWidth={2.5} />
                     </div>
                     <p className="text-[14px] font-medium leading-relaxed text-blue-50/80">{item}</p>
                   </div>
@@ -451,79 +453,68 @@ export default function OnboardingPage() {
                           />
                         </label>
 
-                        <label className="block">
+                        <div className="block">
                           <span className="mb-2 block text-sm font-semibold text-[#6f75a3]">
                             Current Role
                           </span>
-                          <select
+                          <ThemedSelect
                             value={getFormValue("currentRole", user?.role ?? "")}
-                            onChange={(event) => handleChange("currentRole", event.target.value)}
-                            className="auth-input-glow h-12 w-full rounded-xl border border-[#d9def0] bg-white px-4 text-[15px] text-[#5e6696] outline-none"
-                          >
-                            <option value="">Select your role...</option>
-                            <option value="Student">Student</option>
-                            <option value="Analyst">Analyst</option>
-                            <option value="Engineer">Engineer</option>
-                            <option value="Designer">Designer</option>
-                            <option value="Manager">Manager</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </label>
+                            onChange={(value) => handleChange("currentRole", value)}
+                            placeholder="Select your role..."
+                            options={["Student", "Analyst", "Engineer", "Designer", "Manager", "Other"].map((option) => ({ value: option, label: option }))}
+                            buttonClassName="auth-input-glow min-h-12 rounded-xl border-[#d9def0] bg-white text-[15px] text-[#5e6696]"
+                          />
+                        </div>
 
                         <div className="md:col-span-2 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                          <label className="block">
+                          <div className="block">
                             <span className="mb-2 block text-sm font-semibold text-[#6f75a3]">
                               Country
                             </span>
-                            <select
+                            <ThemedSelect
                               value={getFormValue("country", "India")}
-                              onChange={(event) => {
-                                handleChange("country", event.target.value);
+                              onChange={(value) => {
+                                handleChange("country", value);
                                 handleChange("state", "");
                                 handleChange("city", "");
                               }}
-                              className="auth-input-glow h-12 w-full rounded-xl border border-[#d9def0] bg-white px-4 text-[15px] text-[#5e6696] outline-none"
-                            >
-                              <option value="">Select country...</option>
-                              {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                          </label>
+                              placeholder="Select country..."
+                              options={COUNTRIES.map((country) => ({ value: country, label: country }))}
+                              buttonClassName="auth-input-glow min-h-12 rounded-xl border-[#d9def0] bg-white text-[15px] text-[#5e6696]"
+                            />
+                          </div>
 
                           {getFormValue("country") === "India" ? (
                             <>
-                              <label className="block">
+                              <div className="block">
                                 <span className="mb-2 block text-sm font-semibold text-[#6f75a3]">
                                   State
                                 </span>
-                                <select
+                                <ThemedSelect
                                   value={getFormValue("state")}
-                                  onChange={(event) => {
-                                    handleChange("state", event.target.value);
+                                  onChange={(value) => {
+                                    handleChange("state", value);
                                     handleChange("city", "");
                                   }}
-                                  className="auth-input-glow h-12 w-full rounded-xl border border-[#d9def0] bg-white px-4 text-[15px] text-[#5e6696] outline-none"
-                                >
-                                  <option value="">Select state...</option>
-                                  {Object.keys(INDIA_LOCATIONS).map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                              </label>
+                                  placeholder="Select state..."
+                                  options={Object.keys(INDIA_LOCATIONS).map((state) => ({ value: state, label: state }))}
+                                  buttonClassName="auth-input-glow min-h-12 rounded-xl border-[#d9def0] bg-white text-[15px] text-[#5e6696]"
+                                />
+                              </div>
 
-                              <label className="block">
+                              <div className="block">
                                 <span className="mb-2 block text-sm font-semibold text-[#6f75a3]">
                                   City
                                 </span>
-                                <select
+                                <ThemedSelect
                                   disabled={!getFormValue("state")}
                                   value={getFormValue("city")}
-                                  onChange={(event) => handleChange("city", event.target.value)}
-                                  className="auth-input-glow h-12 w-full rounded-xl border border-[#d9def0] bg-white px-4 text-[15px] text-[#5e6696] outline-none disabled:opacity-50"
-                                >
-                                  <option value="">Select city...</option>
-                                  {(INDIA_LOCATIONS[getFormValue("state") as keyof typeof INDIA_LOCATIONS] || []).map(c => (
-                                    <option key={c} value={c}>{c}</option>
-                                  ))}
-                                </select>
-                              </label>
+                                  onChange={(value) => handleChange("city", value)}
+                                  placeholder="Select city..."
+                                  options={(INDIA_LOCATIONS[getFormValue("state") as keyof typeof INDIA_LOCATIONS] || []).map((city) => ({ value: city, label: city }))}
+                                  buttonClassName="auth-input-glow min-h-12 rounded-xl border-[#d9def0] bg-white text-[15px] text-[#5e6696]"
+                                />
+                              </div>
                             </>
                           ) : (
                             <label className="block">
@@ -540,25 +531,18 @@ export default function OnboardingPage() {
                           )}
                         </div>
 
-                        <label className="block">
+                        <div className="block">
                           <span className="mb-2 block text-sm font-semibold text-[#6f75a3]">
                             Target Industry
                           </span>
-                          <select
+                          <ThemedSelect
                             value={getFormValue("targetIndustry")}
-                            onChange={(event) => handleChange("targetIndustry", event.target.value)}
-                            className="auth-input-glow h-12 w-full rounded-xl border border-[#d9def0] bg-white px-4 text-[15px] text-[#5e6696] outline-none"
-                          >
-                            <option value="">Select target industry...</option>
-                            <option value="Healthtech">Healthtech</option>
-                            <option value="Fintech">Fintech</option>
-                            <option value="Enterprise Software">Enterprise Software</option>
-                            <option value="AI / Machine Learning">AI / Machine Learning</option>
-                            <option value="E-Commerce">E-Commerce</option>
-                            <option value="Research">Research</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </label>
+                            onChange={(value) => handleChange("targetIndustry", value)}
+                            placeholder="Select target industry..."
+                            options={["Healthtech", "Fintech", "Enterprise Software", "AI / Machine Learning", "E-Commerce", "Research", "Other"].map((option) => ({ value: option, label: option }))}
+                            buttonClassName="auth-input-glow min-h-12 rounded-xl border-[#d9def0] bg-white text-[15px] text-[#5e6696]"
+                          />
+                        </div>
                         <label className="block">
                           <span className="mb-1 flex items-center gap-2 text-sm font-semibold text-[#6f75a3]">
                             Certificates Upload
@@ -601,25 +585,19 @@ export default function OnboardingPage() {
                         aria-labelledby="onboarding-tab-direction"
                         className="mt-6 grid gap-5 md:grid-cols-2"
                       >
-                        <label className="block">
+                        <div className="block">
                           <span className="mb-2 block text-sm font-semibold text-[#6f75a3]">
                             Focus Role
                           </span>
-                          <select
+                          <ThemedSelect
                             required
                             value={getFormValue("focusRole", user?.focusRole ?? "")}
-                            onChange={(event) => handleChange("focusRole", event.target.value)}
-                            className="auth-input-glow h-12 w-full rounded-xl border border-[#d9def0] bg-white px-4 text-[15px] text-[#5e6696] outline-none"
-                          >
-                            <option value="">Select focus role...</option>
-                            <option value="Machine Learning Engineer">Machine Learning Engineer</option>
-                            <option value="Frontend Developer">Frontend Developer</option>
-                            <option value="Backend Developer">Backend Developer</option>
-                            <option value="Data Scientist">Data Scientist</option>
-                            <option value="Product Manager">Product Manager</option>
-                            <option value="UX/UI Designer">UX/UI Designer</option>
-                          </select>
-                        </label>
+                            onChange={(value) => handleChange("focusRole", value)}
+                            placeholder="Select focus role..."
+                            options={["Machine Learning Engineer", "Frontend Developer", "Backend Developer", "Data Scientist", "Product Manager", "UX/UI Designer"].map((option) => ({ value: option, label: option }))}
+                            buttonClassName="auth-input-glow min-h-12 rounded-xl border-[#d9def0] bg-white text-[15px] text-[#5e6696]"
+                          />
+                        </div>
 
                         <label className="block">
                           <span className="mb-2 block text-sm font-semibold text-[#6f75a3]">
@@ -643,23 +621,18 @@ export default function OnboardingPage() {
                         aria-labelledby="onboarding-tab-background"
                         className="mt-6 space-y-5"
                       >
-                        <label className="block">
+                        <div className="block">
                           <span className="mb-2 block text-sm font-semibold text-[#6f75a3]">
                             Skills You Already Bring
                           </span>
-                          <select
+                          <ThemedSelect
                             value={getFormValue("skills", user?.selfReportedSkills.join(", ") ?? "")}
-                            onChange={(event) => handleChange("skills", event.target.value)}
-                            className="auth-input-glow h-12 w-full rounded-xl border border-[#d9def0] bg-white px-4 text-[15px] text-[#5e6696] outline-none"
-                          >
-                            <option value="">Select your primary skills...</option>
-                            <option value="Python, ML Ops, SQL">Python, ML Ops, SQL</option>
-                            <option value="React, Node.js, TS">React, Node.js, TS</option>
-                            <option value="Figma, UI/UX">Figma, UI/UX</option>
-                            <option value="Management, Agile">Management, Agile</option>
-                            <option value="No prior skills">No prior skills</option>
-                          </select>
-                        </label>
+                            onChange={(value) => handleChange("skills", value)}
+                            placeholder="Select your primary skills..."
+                            options={["Python, ML Ops, SQL", "React, Node.js, TS", "Figma, UI/UX", "Management, Agile", "No prior skills"].map((option) => ({ value: option, label: option }))}
+                            buttonClassName="auth-input-glow min-h-12 rounded-xl border-[#d9def0] bg-white text-[15px] text-[#5e6696]"
+                          />
+                        </div>
 
                         <label className="block">
                           <span className="mb-2 block text-sm font-semibold text-[#6f75a3]">

@@ -2,15 +2,14 @@
 
 import React from 'react';
 import { motion as Motion, useReducedMotion } from 'framer-motion';
-import { useTheme } from '../../contexts/ThemeContext';
-import AppIcon from '../AppIcon';
 import FlowingPattern from './FlowingPattern';
+import type { TargetAndTransition } from 'framer-motion';
 
 interface AmbientGlow {
   className: string;
   lightClassName: string;
   darkClassName: string;
-  animate: any;
+  animate: TargetAndTransition;
   duration: number;
 }
 
@@ -108,7 +107,6 @@ const objects3D = [
 ] as const;
 
 export default function AuthBackdrop({ children }: { children: React.ReactNode }) {
-  const { isDarkMode } = useTheme();
   const reduceMotion = useReducedMotion();
 
   // Force light aesthetic for Auth pages regardless of global theme state if requested, 

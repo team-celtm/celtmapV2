@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
 import type { HiddenSkillCandidateRead, SkillRead } from "@/lib/celtm";
 import { formatDate, toTitleCase } from "@/lib/celtm";
+import AppIcon from "@/components/AppIcon";
+import CeltmProgressLoader from "@/components/CeltmProgressLoader";
 
 type Category = "All" | "Technical" | "Leadership" | "Cognitive";
 
@@ -121,7 +123,7 @@ export default function HiddenSkillsAnalytics() {
       <header className="mb-10">
         <span className="text-indigo-500 font-bold tracking-[0.3em] uppercase text-xs mb-2 block">CELTM Discovery Engine</span>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-          <h1 className="text-5xl font-extrabold tracking-tighter text-slate-900 dark:text-white max-w-2xl leading-[1.1]">
+          <h1 className="text-4xl font-extrabold tracking-tighter text-slate-900 dark:text-white max-w-2xl leading-[1.1] sm:text-5xl">
             Reveal the <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-500">Untapped</span> Potential.
           </h1>
 
@@ -150,15 +152,14 @@ export default function HiddenSkillsAnalytics() {
       ) : null}
 
       {isLoading ? (
-        <div className="min-h-[40vh] flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-14 h-14 rounded-2xl border border-primary/20 border-t-primary animate-spin mx-auto mb-5" />
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-on-surface-variant">Loading hidden skill graph</p>
-          </div>
-        </div>
+        <CeltmProgressLoader
+          title="Loading hidden skills"
+          caption="Cooking your hidden skill graph"
+          stages={["Scanning detected signals", "Reading approved skills", "Mapping confidence", "Preparing the discovery radar"]}
+        />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-          <div className="md:col-span-5 flex flex-col gap-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+          <div className="flex flex-col gap-8 lg:col-span-5">
             <div className="clay-card bg-surface/70 backdrop-blur-md rounded-2xl p-8 border border-outline-variant/5 dark:border-transparent shadow-xl relative overflow-hidden group min-h-[400px] flex flex-col">
               <div className="flex justify-between items-start mb-6 z-10">
                 <div>
@@ -226,7 +227,7 @@ export default function HiddenSkillsAnalytics() {
             <div className="clay-card bg-primary/5 backdrop-blur-md rounded-2xl p-8 border border-primary/10 shadow-lg">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-on-surface">Discovery Summary</h3>
-                <span className="material-symbols-outlined text-primary">analytics</span>
+                <AppIcon name="analytics" className="h-5 w-5 text-primary" />
               </div>
               <div className="space-y-6">
                 {[
@@ -266,7 +267,7 @@ export default function HiddenSkillsAnalytics() {
             </div>
           </div>
 
-          <div className="md:col-span-7">
+          <div className="lg:col-span-7">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-bold text-slate-800 dark:text-white">Detected Competencies</h3>
               <span className="text-xs font-bold text-slate-500">{filteredSkills.length} Traits Identified</span>
@@ -279,9 +280,10 @@ export default function HiddenSkillsAnalytics() {
                   className="clay-card bg-surface/70 backdrop-blur-md rounded-xl p-6 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-md border border-outline-variant/5 dark:border-transparent"
                 >
                   <div className="absolute right-[-20px] top-1/2 -translate-y-1/2 opacity-[0.03] transition-opacity">
-                    <span className="material-symbols-outlined text-[150px]">
-                      {skill.category === "Technical" ? "code" : skill.category === "Leadership" ? "groups" : "psychology"}
-                    </span>
+                    <AppIcon
+                      name={skill.category === "Technical" ? "terminal" : skill.category === "Leadership" ? "groups" : "psychology"}
+                      className="h-36 w-36"
+                    />
                   </div>
 
                   <div className="relative z-10 flex-1">
@@ -342,7 +344,7 @@ export default function HiddenSkillsAnalytics() {
 
               {!filteredSkills.length ? (
                 <div className="p-12 text-center rounded-xl bg-surface-container border border-dashed border-outline-variant/20 dark:border-transparent">
-                  <span className="material-symbols-outlined text-4xl text-on-surface-variant mb-2">search_off</span>
+                  <AppIcon name="search_off" className="mx-auto mb-2 h-10 w-10 text-on-surface-variant" />
                   <h4 className="text-sm font-bold text-on-surface-variant">No latent traits found in this category.</h4>
                 </div>
               ) : null}

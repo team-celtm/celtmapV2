@@ -1,20 +1,23 @@
-# CELTM Web API Reference
+# CELTM Phase 1 API Reference
 
-This document summarizes the backend routes implemented under
-`backend/app/api/`. The backend also exposes FastAPI's generated Swagger UI at
-`/docs` and OpenAPI JSON at `/openapi.json` when the server is running.
+This reference reflects the current `backend/app/main.py` route surface.
+Generated OpenAPI docs are available at `/docs` and `/openapi.json` when the
+backend is running.
 
 ## Base URLs
 
-Local development:
+Local:
 
 ```text
-System endpoints: http://127.0.0.1:8000
-Versioned API:    http://127.0.0.1:8000/api/v1
-Compat API:       http://127.0.0.1:8000/api
+System:   http://127.0.0.1:8000
+API v1:   http://127.0.0.1:8000/api/v1
+Files:    http://127.0.0.1:8000/files
 ```
 
-The Next.js frontend should use:
+`/files` is a local development convenience only. Hosted mode requires private
+Supabase Storage and signed URLs returned by the API.
+
+Frontend local env:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api/v1
@@ -22,229 +25,142 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api/v1
 
 ## Authentication
 
-Most `/api/v1` endpoints require a Supabase access token:
+Student endpoints require a Supabase access token:
 
 ```http
 Authorization: Bearer <supabase-access-token>
 ```
 
-Admin ingestion endpoints use the token returned by `POST /api/v1/admin/login`.
-The admin override endpoint requires:
+Admin and institution endpoints require the admin token returned by
+`POST /api/v1/admin/login`:
 
 ```http
-X-Admin-Override-Token: <ADMIN_OVERRIDE_TOKEN>
+Authorization: Bearer <admin-access-token>
 ```
 
-Public/system endpoints:
+Public endpoints:
 
 - `GET /health`
-- `GET /system/metrics`
-- enhanced RAG routes under `/api/v1/rag-enhanced/*`
-- `POST /api/v1/admin/login`
+- `GET /api/v1/institutions`
+- `GET /files/*` for local uploaded files when `ALLOW_LOCAL_FILE_SERVING=true`
 
-## Error Shape
+`GET /api/v1/question-bank/status` is unauthenticated in code but calls the live
+question-bank health check. Do not expose operational details publicly without a
+gateway or WAF rule.
 
-Application errors are returned as JSON:
+System metrics endpoints require `X-Monitoring-Token` in hosted mode or whenever
+`MONITORING_TOKEN` is configured.
 
-```json
-{
-  "error_code": "unauthorized",
-  "message": "Bearer token is required"
-}
-```
-
-FastAPI validation errors use the standard `detail` field.
-
-Rate-limited requests return `429` and include:
-
-- `X-RateLimit-Limit`
-- `X-RateLimit-Remaining`
-- `Retry-After`
-
-## System
+## System And Public
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| GET | `/health` | No | API health with Supabase, Redis, Neo4j, and worker service flags. |
-| GET | `/system/metrics` | No | Request counters, latency, queue length, worker heartbeat, and recent failures. |
+| GET | `/health` | No | Health and service flags for database, Supabase auth, question bank, OpenAI, Redis/rate limiter, RAG, and Neo4j. |
+| GET | `/api/v1/institutions` | No | Public institution and department list for onboarding. |
+| GET | `/api/v1/question-bank/status` | No | Verifies live Supabase question-bank availability. |
+| GET | `/system/metrics` | Monitoring token in hosted mode | Runtime request, error, audit, storage, and database metrics. |
+| GET | `/api/v1/system/metrics` | Monitoring token in hosted mode | API-v1 alias for runtime metrics. |
+| GET | `/files/{path}` | No | Local development file serving from `backend/data/uploads` when enabled. |
 
-Example:
-
-```powershell
-Invoke-RestMethod http://127.0.0.1:8000/health
-```
-
-## Auth
-
-| Method | Path | Auth | Purpose |
-| --- | --- | --- | --- |
-| GET | `/api/v1/auth/me` | Supabase bearer | Return the authenticated user resolved from the token. |
-
-Example:
-
-```powershell
-Invoke-RestMethod http://127.0.0.1:8000/api/v1/auth/me `
-  -Headers @{ Authorization = "Bearer $env:SUPABASE_ACCESS_TOKEN" }
-```
-
-## Profile
+## Profile, Settings, And Evidence
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/profile/me` | Read the current user's profile. |
-| PATCH | `/api/v1/profile/me` | Update profile fields and metadata. |
-| POST | `/api/v1/profile/me/avatar` | Upload an avatar file. |
-| POST | `/api/v1/profile/me/artifacts` | Upload a resume, certificate, or other career artifact. |
-| GET | `/api/v1/profile/me/artifacts` | List uploaded artifacts. |
-| PUT | `/api/v1/profile/me/artifacts/{artifact_id}` | Replace an artifact file. |
+| GET | `/api/v1/profile/me` | Read or create the current user profile. |
+| PATCH | `/api/v1/profile/me` | Update profile, institution, department, role, avatar URL, and metadata. |
+| POST | `/api/v1/profile/me/evidence-links` | Validate LinkedIn/GitHub/portfolio/certificate links and record readiness evidence. |
+| POST | `/api/v1/profile/me/avatar` | Upload avatar file. |
+| GET | `/api/v1/profile/me/artifacts` | List uploaded resume/certificate/evidence artifacts. |
+| POST | `/api/v1/profile/me/artifacts` | Upload a profile artifact. |
+| GET | `/api/v1/profile/me/artifacts/{artifact_id}/signed-url` | Refresh a short-lived signed URL for a private artifact. |
+| PUT | `/api/v1/profile/me/artifacts/{artifact_id}` | Replace an existing artifact. |
 | DELETE | `/api/v1/profile/me/artifacts/{artifact_id}` | Delete an artifact. |
+| GET | `/api/v1/settings/me` | Read current preferences. |
+| PATCH | `/api/v1/settings/me` | Update preferences. |
+| PATCH | `/api/v1/settings/me/notifications` | Update notification preferences. |
+| PATCH | `/api/v1/settings/me/security` | Update stored security preference mode. |
 
-Profile update body:
+Artifact upload is `multipart/form-data`:
 
-```json
-{
-  "full_name": "Zian Surani",
-  "headline": "AI Engineer",
-  "focus_role": "Machine Learning Engineer",
-  "weekly_goal": "Finish two assessments",
-  "metadata": {
-    "location": "India",
-    "target_industry": "AI"
-  }
-}
-```
+- `file`: required.
+- `file_type`: optional, defaults to `certificate`.
 
-Artifact upload uses `multipart/form-data`:
+Upload handlers enforce endpoint-specific size limits, extension allowlists,
+MIME/magic-byte checks, and extracted-text caps. Hosted uploads are stored in
+private object storage and returned as `signed_url`/`file_url` values.
 
-- `file`: required upload file
-- `file_type`: optional, defaults to `resume`
-
-## Settings
+Resume analysis is a separate endpoint because it creates both an artifact and a
+resume analysis record:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/settings/me` | Read notification and preference settings. |
-| PATCH | `/api/v1/settings/me` | Update general preferences. |
-| PATCH | `/api/v1/settings/me/notifications` | Update notification-specific preferences. |
-| GET | `/api/v1/settings/me/security` | Read security settings. |
-| PATCH | `/api/v1/settings/me/security` | Update security mode. |
+| POST | `/api/v1/resume/analyze` | Upload and analyze a resume for the active target role. |
+| GET | `/api/v1/resume/latest` | Return the latest resume analysis. |
+| GET | `/api/v1/jobs/{job_id}` | Poll an owned background job, including queued resume-analysis jobs. |
 
-Notification update body:
+When `ASYNC_AI_JOBS_ENABLED=true`, `POST /api/v1/resume/analyze` returns:
 
 ```json
 {
-  "desktop_notifications": true,
-  "weekly_digest": true,
-  "folio_reminders": false,
-  "folio_focus": "assessment"
+  "status": "queued",
+  "job_id": "job_id",
+  "artifact_id": "artifact_id",
+  "poll_url": "/api/v1/jobs/job_id"
 }
 ```
 
-Security update body:
-
-```json
-{
-  "security_mode": "standard"
-}
-```
-
-## Dashboard and Reports
+## Dashboard, Readiness, Skills
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/dashboard/summary` | Dashboard projection for the current user. Add `?refresh=true` to force refresh. |
-| GET | `/api/v1/reports/me/latest` | Latest generated report, or `null`. |
-| POST | `/api/v1/reports/me/generate` | Generate a new report and refresh dashboard projection. |
-| GET | `/api/v1/reports/me/passport.pdf` | Download the skill passport PDF. |
-
-## Skills and Skill Requests
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/v1/skills/me` | List the user's skills. |
-| GET | `/api/v1/skills/me/role-fit` | Return best role fit. |
-| GET | `/api/v1/skills/me/gaps` | Return skill gaps. |
-| GET | `/api/v1/skills/me/hidden` | List hidden skill candidates. |
-| POST | `/api/v1/skills/me/hidden/{candidate_id}/approve` | Approve a hidden skill candidate. |
-| POST | `/api/v1/skills/me/hidden/{candidate_id}/reject` | Reject a hidden skill candidate. |
-| GET | `/api/v1/skills/requests` | List skill requests. |
+| GET | `/api/v1/dashboard/summary` | Current readiness dashboard projection. |
+| GET | `/api/v1/readiness/events` | Readiness event history. |
+| GET | `/api/v1/skills/me` | Current skill/domain scores. |
+| GET | `/api/v1/skills/me/gaps` | Skill/domain gaps. |
+| GET | `/api/v1/skills/me/role-fit` | Current role fit summary. |
+| GET | `/api/v1/skills/me/hidden` | Hidden skill candidates. |
+| POST | `/api/v1/skills/me/hidden/{candidate_id}/{action}` | Approve or reject a hidden skill candidate. |
+| GET | `/api/v1/skills/requests` | Skill request list. |
 | POST | `/api/v1/skills/requests` | Create a skill request. |
-| GET | `/api/v1/skills/requests/{request_id}` | Read a skill request. |
 
-Skill request body depends on `SkillRequestCreate` in
-`backend/app/schemas/skill_request.py`.
+Hidden skill `action` accepts `approve` or `reject`.
 
-## MCQ and Assessments
+## Assessments
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/mcq/questions` | Fetch a question batch by category, difficulty, skill, request, type, and limit. |
-| GET | `/api/v1/assessments/log` | Assessment history across assessment types. |
-| GET | `/api/v1/assessments/subjects` | Discover subjects available for the current user. |
-| GET | `/api/v1/assessments/subjects/{subject_key}` | Subject detail and availability. |
-| POST | `/api/v1/assessments` | Create an assessment session. |
-| POST | `/api/v1/assessments/{assessment_id}/answers` | Submit one or more answers. |
+| GET | `/api/v1/assessments/subjects` | Available assessment subjects. |
+| GET | `/api/v1/assessments/subjects/{subject_id}` | Subject detail and availability. |
+| GET | `/api/v1/assessments/assignments` | Assigned tests visible to the student. |
+| POST | `/api/v1/assessments` | Create an assessment attempt. |
+| GET | `/api/v1/assessments/{assessment_id}/questions` | Get assigned/next questions. |
+| POST | `/api/v1/assessments/{assessment_id}/answer` | Submit one answer. |
+| POST | `/api/v1/assessments/{assessment_id}/answers` | Submit a batch of answers. |
 | POST | `/api/v1/assessments/{assessment_id}/complete` | Complete and score an assessment. |
-
-Question query parameters:
-
-```text
-category=<subject or category>
-difficulty=<optional difficulty>
-skill_id=<optional UUID>
-skill_request_id=<optional UUID>
-question_type=MCQ|situational|written
-limit=1..50
-```
+| GET | `/api/v1/assessments/log` | Completed assessment log. |
+| GET | `/api/v1/assessments/subject-progress` | Subject-progress summary. |
+| GET | `/api/v1/mcq/questions` | Legacy question fetch route. |
 
 Create assessment body:
 
 ```json
 {
-  "category": "Machine Learning",
-  "assessment_type": "mcq",
-  "question_type": "MCQ",
-  "skill_id": null,
-  "skill_request_id": null
+  "mode": "quick",
+  "category": "Communication",
+  "assessment_type": "capability",
+  "question_type": "MIXED",
+  "assignment_id": null
 }
 ```
 
-Submit answers body:
+Single-answer body:
 
 ```json
 {
-  "answers": [
-    {
-      "question_id": "question-id",
-      "selected_option_id": "option-id"
-    },
-    {
-      "question_id": "written-question-id",
-      "answer_text": "Free-form answer text"
-    }
-  ]
-}
-```
-
-## Placement
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/v1/placement/status` | Return whether the user completed placement. |
-| GET | `/api/v1/placement/questions` | Fetch placement questions, optionally by `role_name`. |
-| POST | `/api/v1/placement/submit` | Submit placement answers and bootstrap trajectory modules. |
-
-Submit body:
-
-```json
-{
-  "role_name": "Machine Learning Engineer",
-  "answers": [
-    {
-      "question_id": "question-id",
-      "selected_option_id": "option-id"
-    }
-  ]
+  "question_id": "question-id",
+  "selected_answer": "A",
+  "selected_option_id": "A",
+  "time_taken_seconds": 42
 }
 ```
 
@@ -252,11 +168,11 @@ Submit body:
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/written-assessments` | List written assessment sessions. |
-| POST | `/api/v1/written-assessments` | Create a written session. |
+| GET | `/api/v1/written-assessments` | List written sessions. |
+| POST | `/api/v1/written-assessments` | Create written session. |
 | GET | `/api/v1/written-assessments/{session_id}` | Read one written session. |
-| PATCH | `/api/v1/written-assessments/{session_id}` | Save submission text. |
-| POST | `/api/v1/written-assessments/{session_id}/complete` | Queue or run evaluation and return latest session state. |
+| PATCH | `/api/v1/written-assessments/{session_id}` | Save answer text and evaluator mode. |
+| POST | `/api/v1/written-assessments/{session_id}/complete` | Complete and evaluate written answer. |
 
 Create body:
 
@@ -264,171 +180,147 @@ Create body:
 {
   "skill_id": null,
   "skill_request_id": null,
-  "prompt": "Explain overfitting and how to prevent it.",
-  "evaluator_mode": "teacher"
+  "evaluator_mode": "central_unbiased_ai",
+  "assignment_id": null
 }
 ```
 
-Save submission body:
+Patch body:
 
 ```json
 {
-  "submission_text": "A complete answer with at least 20 characters.",
-  "evaluator_mode": "strict_ai"
+  "submission_text": "A complete written answer.",
+  "evaluator_mode": "central_unbiased_ai"
 }
 ```
 
-`evaluator_mode` accepts:
-
-- `teacher`
-- `liberal_ai`
-- `strict_ai`
-
-## Learning and Trajectory
+## Learning, Reports, Schedule, Career, Chat
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/v1/learning/path` | Get the learning path for `role_name` or the user's resolved focus role. |
-| GET | `/api/v1/learning/resources` | Get resources for required `skill_name`. |
-| POST | `/api/v1/trajectory/bootstrap` | Generate trajectory modules for a role. |
-| GET | `/api/v1/trajectory/{role_name}` | Read trajectory for a role. |
-| GET | `/api/v1/trajectory/me/alternates` | Return alternate role trajectories. |
+| GET | `/api/v1/learning/path` | Learning path for the current profile/role. |
+| GET | `/api/v1/reports/me/latest` | Latest report payload. |
+| GET | `/api/v1/reports/assessment/{assessment_id}.pdf` | Download assessment report PDF. |
+| GET | `/api/v1/reports/me/passport.pdf` | Download student passport PDF. |
+| GET | `/api/v1/reports/me/dashboard.pdf` | Download dashboard PDF. |
+| GET | `/api/v1/reports/me/dashboard.csv` | Currently forbidden for students; admin CSV export is separate. |
+| GET | `/api/v1/schedule/events` | List schedule events. |
+| POST | `/api/v1/schedule/events` | Create schedule event. |
+| PATCH | `/api/v1/schedule/events/{event_id}` | Update schedule event. |
+| DELETE | `/api/v1/schedule/events/{event_id}` | Delete schedule event. |
+| GET | `/api/v1/career-recommendations` | Recommended career aims. |
+| POST | `/api/v1/career-recommendations/draft-personality` | Save draft digital personality signals. |
+| POST | `/api/v1/career-aspirations` | Create one career aspiration. |
+| POST | `/api/v1/career-aspirations/recommended` | Create multiple recommended aspirations. |
+| POST | `/api/v1/career-aspirations/{aspiration_id}/reanalyze` | Re-run aspiration analysis. |
+| GET | `/api/v1/career-aspirations` | List aspirations. |
+| POST | `/api/v1/chat` | CELTM assistant response from user context. |
 
-Bootstrap body:
-
-```json
-{
-  "role_name": "Machine Learning Engineer"
-}
-```
-
-## Interview and Sessions
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| POST | `/api/v1/interview/sessions` | Create an interview session. |
-| GET | `/api/v1/interview/sessions` | List interview sessions with `cursor` and `limit`. |
-| POST | `/api/v1/interview/sessions/{session_id}/transcript` | Submit transcript text. |
-| POST | `/api/v1/interview/sessions/{session_id}/media` | Submit media reference. |
-| POST | `/api/v1/interview/sessions/{session_id}/complete` | Complete and queue evaluation. |
-| GET | `/api/v1/interview/sessions/{session_id}/results` | Read interview result. |
-| GET | `/api/v1/sessions` | Compatibility paginated session list. |
-
-Create body:
+Schedule body:
 
 ```json
 {
-  "role_name": "Machine Learning Engineer",
-  "skill_request_id": null,
-  "interview_type": "role"
+  "title": "Mock interview",
+  "starts_at": "2026-06-04T10:00:00+05:30",
+  "ends_at": "2026-06-04T10:30:00+05:30",
+  "event_type": "task",
+  "metadata": {}
 }
 ```
 
-Transcript body:
+Career aspiration body:
 
 ```json
 {
-  "transcript": "Question and answer transcript..."
+  "desired_role": "AI Engineer"
 }
 ```
 
-Media body:
+Chat body:
 
 ```json
 {
-  "media_reference": "supabase/storage/path-or-url"
+  "message": "Where do I see my assessment stats?",
+  "history": []
 }
 ```
 
-## Schedule
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| POST | `/api/v1/schedule/events` | Create an event. |
-| GET | `/api/v1/schedule/events` | List events with cursor pagination. |
-| PATCH | `/api/v1/schedule/events/{event_id}` | Update an event. |
-| DELETE | `/api/v1/schedule/events/{event_id}` | Delete an event. |
-
-Event schemas are in `backend/app/schemas/schedule.py`.
-
-## Copilot and RAG
+## Admin And Institution
 
 | Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| POST | `/api/v1/copilot/chat` | Supabase bearer | Build a RAG-backed copilot reply. |
-| POST | `/api/v1/rag-enhanced/search` | No | Enhanced semantic search. |
-| GET | `/api/v1/rag-enhanced/search/quick` | No | Low-latency search by query string. |
-| POST | `/api/v1/rag-enhanced/search/with-keywords` | No | Keyword-emphasized search. |
-| GET | `/api/v1/rag-enhanced/stats/performance` | No | Enhanced RAG performance stats. |
-| GET | `/api/v1/rag-enhanced/stats/cache` | No | Enhanced RAG cache stats. |
-| POST | `/api/v1/rag-enhanced/cache/clear` | No | Clear enhanced RAG cache. |
-| GET | `/api/v1/rag-enhanced/health` | No | Enhanced RAG health. |
-
-Copilot body:
-
-```json
-{
-  "page_context": "dashboard",
-  "message": "What should I work on next?"
-}
-```
-
-Enhanced search body:
-
-```json
-{
-  "query": "React hooks basics",
-  "top_k": 5,
-  "user_id": "optional-user-id",
-  "use_expansion": true
-}
-```
-
-## Admin
-
-| Method | Path | Auth | Purpose |
-| --- | --- | --- | --- |
-| POST | `/api/v1/admin/login` | No | Exchange admin username/password for admin token. |
-| POST | `/api/v1/admin/ingest-csv` | Admin bearer | Upload and ingest a CSV file. |
-| POST | `/api/v1/admin/sync-celtmind` | Admin bearer | Queue CELTMIND sync. |
-| GET | `/api/v1/admin/sync-celtmind/status` | Admin bearer | Read latest sync status. |
-| POST | `/api/v1/admin/skill-requests/{request_id}/override` | Override header | Apply admin decision to a skill request. |
+| POST | `/api/v1/admin/login` | No | Login with admin/institution credentials. |
+| GET | `/api/v1/admin/me` | Admin | Current admin identity. |
+| GET | `/api/v1/admin/mfa` | Admin | Current MFA status for the admin account. |
+| POST | `/api/v1/admin/mfa/enroll` | Admin | Create a pending TOTP secret and otpauth URL. |
+| POST | `/api/v1/admin/mfa/verify` | Admin | Verify a TOTP code and enable MFA. |
+| DELETE | `/api/v1/admin/mfa` | Admin | Disable account MFA when policy allows it. |
+| POST | `/api/v1/admin/change-password` | Admin | Change current admin password. |
+| GET | `/api/v1/admin/institutions` | Admin | List visible institutions. |
+| POST | `/api/v1/admin/institutions` | Super admin | Create institution. |
+| POST | `/api/v1/admin/departments` | Super admin | Create department. |
+| POST | `/api/v1/admin/heads` | Super admin | Create institution/department head account. |
+| GET | `/api/v1/admin/admin-accounts` | Super admin | List admin accounts. |
+| POST | `/api/v1/admin/admin-accounts/{account_id}/reset-password` | Super admin | Reset an admin account password. |
+| GET | `/api/v1/admin/students` | Admin | Student readiness cards in admin scope. |
+| GET | `/api/v1/admin/students/export.csv` | Admin | CSV export of visible students. |
+| GET | `/api/v1/admin/students/export.pdf` | Admin | PDF export of visible students. |
+| GET | `/api/v1/admin/students/{user_id}` | Admin | Student detail in admin scope. |
+| GET | `/api/v1/admin/students/{target_user_id}/passport.pdf` | Admin | Student passport PDF in admin scope. |
+| GET | `/api/v1/admin/questions/sample.csv` | Super admin | Download question CSV template. |
+| POST | `/api/v1/admin/ingest-csv` | Super admin | Upload question CSV, optionally assign as test. |
+| POST | `/api/v1/admin/sync-celtmind` | Super admin | Refresh question-bank status. |
+| POST | `/api/v1/admin/questions/sync` | Super admin | Alias for question-bank sync. |
+| POST | `/api/v1/admin/courses` | Admin | Create course within allowed institution. |
+| POST | `/api/v1/admin/questions` | Super admin | Create one Supabase question. |
+| GET | `/api/v1/admin/question-sets` | Admin | List question sets. |
+| GET | `/api/v1/admin/assessment-assignments` | Admin | List visible assignments. |
+| POST | `/api/v1/admin/assessment-assignments` | Admin | Create scheduled assignment. |
+| POST | `/api/v1/admin/assessment-assignments/{assignment_id}/terminate` | Admin | Terminate scheduled assignment. |
 
 Admin login body:
 
 ```json
 {
-  "username": "admin@celtm.com",
-  "password": "admin123"
+  "email": "admin@celtm.com",
+  "password": "change-this-before-hosting",
+  "mfa_code": "123456"
 }
 ```
 
-Admin CSV upload uses `multipart/form-data`:
+`mfa_code` is optional locally. Hosted deployments can require it with
+`ADMIN_MFA_REQUIRED=true`.
 
-- `file`: CSV file
-- `role_name`: optional role context
-
-Skill request override body:
+Assignment body:
 
 ```json
 {
-  "decision": "approved",
-  "reason": "Verified by admin"
+  "title": "Communication readiness test",
+  "department_id": "dept_id",
+  "category": "Communication",
+  "question_type": "MIXED",
+  "assessment_type": "capability",
+  "mode": "quick",
+  "starts_at": "2026-06-04T10:00:00+05:30",
+  "ends_at": "2026-06-04T11:00:00+05:30",
+  "duration_minutes": 60,
+  "instructions": "Answer all questions.",
+  "question_set_id": null,
+  "question_ids": []
 }
 ```
 
-## Compatibility Routes
+## Error Shapes
 
-The backend also exposes compatibility aliases under `/api` for older frontend
-contracts:
+FastAPI validation errors return the standard `detail` field. Application errors
+also generally use `detail`:
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| POST | `/api/interview/start` | Create interview session and return `sessionId`. |
-| POST | `/api/interview/submit` | Submit interview transcript/media and queue evaluation. |
-| GET | `/api/learning-path` | Compact learning path payload. |
-| GET | `/api/sessions` | Compact recent interview sessions. |
-| GET | `/api/role-fit` | Compact role-fit payload. |
-| GET | `/api/skills` | Compact skill name to score map. |
+```json
+{
+  "detail": "Bearer token is required"
+}
+```
 
-Use `/api/v1` for new frontend work.
+The frontend API client reads both `message` and `detail`.
+
+Rate-limited requests return `429` with a `Retry-After` header.

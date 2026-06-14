@@ -4,7 +4,12 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import type { Session } from "@supabase/supabase-js";
 import { apiFetch, setApiAuthSession } from "../lib/api";
 import { resolveStorageAssetUrl } from "../lib/storage";
-import { assertSupabaseConfigured, supabase } from "../lib/supabase";
+import {
+  assertSupabaseConfigured,
+  clearSupabaseAuthStorage,
+  isInvalidRefreshTokenError,
+  supabase,
+} from "../lib/supabase";
 
 const DEFAULT_AVATAR = "https://ui-avatars.com/api/?name=CELTM+User&background=6366f1&color=fff";
 
@@ -23,6 +28,8 @@ interface BackendProfileMetadata {
   bio?: string;
   location?: string;
   target_industry?: string;
+  institution_name?: string;
+  department_name?: string;
 }
 
 interface BackendProfile {
@@ -33,6 +40,10 @@ interface BackendProfile {
   focus_role?: string | null;
   weekly_goal?: string | null;
   avatar_url?: string | null;
+  institution_id?: string | null;
+  department_id?: string | null;
+  institution_name?: string | null;
+  department_name?: string | null;
   metadata?: BackendProfileMetadata | null;
 }
 
@@ -56,6 +67,10 @@ export interface UserProfile {
   selfReportedSkills: string[];
   hasCompletedOnboarding: boolean;
   hasCompletedPlacement: boolean;
+  institutionId: string;
+  departmentId: string;
+  institutionName: string;
+  departmentName: string;
 }
 
 interface SignInPayload {
@@ -65,6 +80,10 @@ interface SignInPayload {
 
 interface SignUpPayload extends SignInPayload {
   name: string;
+  institutionId?: string;
+  departmentId?: string;
+  institutionName?: string;
+  departmentName?: string;
   emailRedirectTo?: string;
 }
 
@@ -79,11 +98,14 @@ interface AuthContextType {
   session: Session | null;
   signIn: (payload: SignInPayload) => Promise<UserProfile | null>;
   signUp: (payload: SignUpPayload) => Promise<SignUpResult>;
+  requestPasswordReset: (email: string, redirectTo?: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<UserProfile>) => Promise<void>;
   completeOnboarding: (updates?: Partial<UserProfile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
   isLoading: boolean;
+  isLoggingOut: boolean;
 }
 
 const defaultProfileAssets: UserProfileAssets = {
@@ -99,8 +121,12 @@ const defaultProfileValues = {
   portfolioScore: 0,
   avatar: DEFAULT_AVATAR,
   selfReportedSkills: [],
-  hasCompletedOnboarding: false,
+  hasCompletedOnboarding: true,
   hasCompletedPlacement: false,
+  institutionId: "",
+  departmentId: "",
+  institutionName: "",
+  departmentName: "",
 };
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -117,18 +143,6 @@ function getSessionUserMetadata(session: Session | null): SessionUserMetadata {
 function getSessionOnboardingStatus(session: Session | null): boolean | null {
   const sessionOnboardingStatus = getSessionUserMetadata(session).has_completed_onboarding;
   return typeof sessionOnboardingStatus === "boolean" ? sessionOnboardingStatus : null;
-}
-
-function hasUploadedProfileAssets(assets?: Partial<UserProfileAssets>): boolean {
-  if (!assets) {
-    return false;
-  }
-
-  return Boolean(
-    assets.resumeName ||
-      assets.primaryCertificateName ||
-      (Array.isArray(assets.supportingCertificateNames) && assets.supportingCertificateNames.length > 0),
-  );
 }
 
 function resolveOnboardingStatus(
@@ -153,7 +167,7 @@ function resolveOnboardingStatus(
     return true;
   }
 
-  return false;
+  return true;
 }
 
 function buildUserProfile(
@@ -199,6 +213,18 @@ function buildUserProfile(
     hasCompletedPlacement: typeof metadata.has_completed_placement === "boolean"
       ? metadata.has_completed_placement
       : currentUser?.hasCompletedPlacement ?? defaultProfileValues.hasCompletedPlacement,
+    institutionId: profile?.institution_id ?? currentUser?.institutionId ?? defaultProfileValues.institutionId,
+    departmentId: profile?.department_id ?? currentUser?.departmentId ?? defaultProfileValues.departmentId,
+    institutionName:
+      profile?.institution_name ??
+      (typeof metadata.institution_name === "string" ? metadata.institution_name : undefined) ??
+      currentUser?.institutionName ??
+      defaultProfileValues.institutionName,
+    departmentName:
+      profile?.department_name ??
+      (typeof metadata.department_name === "string" ? metadata.department_name : undefined) ??
+      currentUser?.departmentName ??
+      defaultProfileValues.departmentName,
   };
 }
 
@@ -220,6 +246,10 @@ function toProfilePatch(updates: Partial<UserProfile>, currentUser: UserProfile 
     focus_role: updates.focusRole,
     weekly_goal: updates.weeklyGoal,
     avatar_url: updates.avatar,
+    institution_id: updates.institutionId,
+    department_id: updates.departmentId,
+    institution_name: updates.institutionName,
+    department_name: updates.departmentName,
     metadata,
   };
 }
@@ -228,7 +258,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const userRef = useRef<UserProfile | null>(null);
+  const profileLoadPromiseRef = useRef<{
+    accessToken: string;
+    promise: Promise<UserProfile | null>;
+  } | null>(null);
 
   useEffect(() => {
     userRef.current = user;
@@ -279,7 +314,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const {
         data: { session: refreshedSession },
+        error: sessionError,
       } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        if (isInvalidRefreshTokenError(sessionError)) {
+          clearSupabaseAuthStorage();
+          setApiAuthSession(null);
+          setSession(null);
+        }
+        return;
+      }
 
       if (!refreshedSession) {
         return;
@@ -293,11 +338,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    setIsLoggingOut(true);
     assertSupabaseConfigured();
-    setApiAuthSession(null);
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
+    try {
+      setApiAuthSession(null);
+      clearSupabaseAuthStorage();
+      try {
+        await supabase.auth.signOut();
+      } catch (caught) {
+        if (!isInvalidRefreshTokenError(caught)) {
+          await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+        }
+      }
+      setUser(null);
+      setSession(null);
+    } finally {
+      setIsLoading(false);
+      setIsLoggingOut(false);
+    }
   }, []);
 
   const loadProfile = useCallback(async (activeSession: Session | null) => {
@@ -306,6 +364,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
 
+    const accessToken = activeSession.access_token;
+    const inFlightLoad = profileLoadPromiseRef.current;
+    if (inFlightLoad?.accessToken === accessToken) {
+      return inFlightLoad.promise;
+    }
+
+    const loadPromise = (async () => {
     const currentUser =
       userRef.current?.id === activeSession.user.id ? userRef.current : null;
 
@@ -318,22 +383,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(nextUser);
       }
       
-      await syncSessionMetadata(activeSession, profile, nextUser);
+      void syncSessionMetadata(activeSession, profile, nextUser);
       return nextUser;
     } catch (caught) {
-      // If we get an Unauthorized error or a network failure during profile load,
-      // and we have no currentUser, we should verify if the session is still valid.
       console.error("Profile load failed:", caught);
       
       if (caught instanceof Error && (caught.message.includes("401") || caught.message.includes("Token"))) {
-           // If session is explicitly invalid, clear it to prevent loops
            void logout();
            return null;
       }
 
-      const nextUser = currentUser ?? buildUserProfile(activeSession, null);
-      setUser(nextUser);
-      return nextUser;
+      setUser(null);
+      throw caught;
+    }
+    })();
+
+    profileLoadPromiseRef.current = {
+      accessToken,
+      promise: loadPromise,
+    };
+
+    try {
+      return await loadPromise;
+    } finally {
+      if (profileLoadPromiseRef.current?.promise === loadPromise) {
+        profileLoadPromiseRef.current = null;
+      }
     }
   }, [syncSessionMetadata, logout]);
 
@@ -351,14 +426,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!nextSession) {
         setUser(null);
         setIsLoading(false);
+        setIsLoggingOut(false);
         return;
       }
 
+      setIsLoggingOut(false);
       const isSameUser = userRef.current?.id === nextSession.user.id;
       if (!isSameUser) {
         setIsLoading(true);
       }
-      await loadProfile(nextSession);
+      try {
+        await loadProfile(nextSession);
+      } catch {
+        if (isMounted) {
+          setUser(null);
+        }
+      }
 
       if (isMounted && !isSameUser) {
         setIsLoading(false);
@@ -377,11 +460,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const {
-        data: { session: currentSession },
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session: currentSession },
+          error,
+        } = await supabase.auth.getSession();
 
-      await syncSessionState(currentSession);
+        if (error) {
+          if (isInvalidRefreshTokenError(error)) {
+            clearSupabaseAuthStorage();
+          }
+          await syncSessionState(null);
+          return;
+        }
+
+        await syncSessionState(currentSession);
+      } catch (caught) {
+        if (isInvalidRefreshTokenError(caught)) {
+          clearSupabaseAuthStorage();
+          await syncSessionState(null);
+          return;
+        }
+        await syncSessionState(null);
+      }
     };
 
     void initialize();
@@ -399,6 +500,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loadProfile]);
 
   const signIn = async ({ email, password }: SignInPayload) => {
+    setIsLoggingOut(false);
     assertSupabaseConfigured();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
@@ -408,13 +510,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (data.session) {
       setApiAuthSession(data.session);
       setSession(data.session);
-      return await loadProfile(data.session);
+      const optimisticUser = buildUserProfile(data.session, null, userRef.current);
+      setUser(optimisticUser);
+      setIsLoading(false);
+      void loadProfile(data.session).catch((caught) => {
+        console.error("Profile load after sign-in failed:", caught);
+      });
+      return optimisticUser;
     }
 
     return null;
   };
 
-  const signUp = async ({ name, email, password, emailRedirectTo }: SignUpPayload) => {
+  const signUp = async ({
+    name,
+    email,
+    password,
+    institutionId,
+    departmentId,
+    institutionName,
+    departmentName,
+    emailRedirectTo,
+  }: SignUpPayload) => {
+    setIsLoggingOut(false);
     assertSupabaseConfigured();
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -423,6 +541,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         data: {
           full_name: name,
           name,
+          institution_id: institutionId,
+          department_id: departmentId,
+          institution_name: institutionName,
+          department_name: departmentName,
+          has_completed_onboarding: true,
         },
         emailRedirectTo,
       },
@@ -443,6 +566,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionEstablished: Boolean(data.session),
       user: userProfile,
     };
+  };
+
+  const requestPasswordReset = async (email: string, redirectTo?: string) => {
+    assertSupabaseConfigured();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+
+    if (error) {
+      throw error;
+    }
+  };
+
+  const updatePassword = async (password: string) => {
+    assertSupabaseConfigured();
+    const {
+      data: { session: activeSession },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+
+    if (sessionError) {
+      throw sessionError;
+    }
+
+    if (!activeSession) {
+      throw new Error("Open the reset link from your email before setting a new password.");
+    }
+
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      throw error;
+    }
   };
 
   const refreshProfile = async () => {
@@ -477,11 +632,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         signIn,
         signUp,
+        requestPasswordReset,
+        updatePassword,
         logout,
         updateUser,
         completeOnboarding,
         refreshProfile,
         isLoading,
+        isLoggingOut,
       }}
     >
       {children}

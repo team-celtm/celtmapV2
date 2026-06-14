@@ -1,1118 +1,595 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useMemo, useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError, apiFetch } from "@/lib/api";
-import type {
-  AssessmentCompletionResponse,
-  AssessmentRead,
-  MCQQuestionBatchResponse,
-  MCQQuestionPublic,
-} from "@/lib/celtm";
-import { toTitleCase } from "@/lib/celtm";
+import type { ReadinessComponent } from "@/lib/celtm";
 
-type Screen = "intro" | "question" | "submitting" | "results";
-type IntegrityReason = "focus-loss";
-
-interface IntegrityNotice {
-  reason: IntegrityReason;
-  message: string;
-  remainingAttempts: number;
-  recordedAt: number;
+interface PublicQuestion {
+  id: string;
+  question_id: string;
+  dimension: string;
+  difficulty: string;
+  question_type: string;
+  scenario?: string | null;
+  question_text: string;
+  options: Array<{ id: string; option_text: string }>;
 }
 
-interface PersistedAssessmentAttempt {
-  version: 1;
-  assessment: AssessmentRead | null;
+interface QuestionsPayload {
+  status: string;
+  assessment_id: string;
+  questions: PublicQuestion[];
   answers: Record<string, string>;
-  currentIndex: number;
-  deadlineAt: number | null;
-  integrityNotice: IntegrityNotice | null;
-  questions: MCQQuestionPublic[];
-  results: AssessmentCompletionResponse | null;
-  screen: Screen;
+  progress?: { answered: number; total_required: number; percent: number };
 }
 
-interface FinishAssessmentOptions {
-  automatic?: boolean;
-  errorMessage?: string | null;
-  keepalive?: boolean;
-  notice?: IntegrityNotice | null;
+interface AssessmentResult {
+  assessment_id?: string;
+  id?: string;
+  score: number;
+  readiness_score?: number | null;
+  readiness_components?: ReadinessComponent[];
+  readiness_formula?: string | null;
+  correct_answers?: number;
+  total_questions?: number;
+  status: string;
+  capability_profile?: Record<string, number>;
+  hidden_skills?: unknown[];
+  areas_of_betterment?: unknown[];
+  inference?: { insight?: string; strengths?: string[]; risks?: string[]; recommendations?: string[] };
 }
 
-const letters = ["A", "B", "C", "D", "E", "F"];
-const defaultAttemptLimit = 3;
-
-function deriveDurationMinutes(questionCount: number): number {
-  return Math.max(10, Math.ceil((questionCount || 10) * 0.75));
-}
-
-function readBrowserStorage<T>(key: string, kind: "local" | "session"): T | null {
-  if (typeof window === "undefined") {
-    return null;
+function resultItemLabel(value: unknown, preferredKey: "skill" | "area") {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return String(record[preferredKey] ?? record.name ?? JSON.stringify(record));
   }
-
-  try {
-    const storage = kind === "local" ? window.localStorage : window.sessionStorage;
-    const value = storage.getItem(key);
-    return value ? (JSON.parse(value) as T) : null;
-  } catch {
-    return null;
-  }
+  return String(value ?? "");
 }
 
-function writeBrowserStorage(key: string, value: unknown, kind: "local" | "session") {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    const storage = kind === "local" ? window.localStorage : window.sessionStorage;
-    storage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Ignore storage quota and serialization failures.
-  }
-}
-
-function removeBrowserStorage(key: string, kind: "local" | "session") {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    const storage = kind === "local" ? window.localStorage : window.sessionStorage;
-    storage.removeItem(key);
-  } catch {
-    // Ignore storage access failures.
-  }
-}
-
-function readRemainingAttempts(storageKey: string): number {
-  const value = readBrowserStorage<number>(storageKey, "local");
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return defaultAttemptLimit;
-  }
-  return Math.max(0, Math.floor(value));
-}
-
-function writeRemainingAttempts(storageKey: string, value: number) {
-  writeBrowserStorage(storageKey, Math.max(0, Math.floor(value)), "local");
-}
-
-function readPersistedAssessmentAttempt(storageKey: string): PersistedAssessmentAttempt | null {
-  const value = readBrowserStorage<PersistedAssessmentAttempt>(storageKey, "session");
-  if (!value || value.version !== 1 || !Array.isArray(value.questions)) {
-    return null;
-  }
-  return value;
-}
-
-function writePersistedAssessmentAttempt(storageKey: string, payload: PersistedAssessmentAttempt) {
-  writeBrowserStorage(storageKey, payload, "session");
-}
-
-function clearPersistedAssessmentAttempt(storageKey: string) {
-  removeBrowserStorage(storageKey, "session");
-}
-
-function AssessmentQuizPageContent() {
+function QuizContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const skillId = searchParams.get("skillId");
-  const skillRequestId = searchParams.get("skillRequestId");
-  const category = searchParams.get("category") ?? "general";
-  const difficulty = searchParams.get("difficulty");
-  const title = searchParams.get("title") ?? "Technical Assessment";
-  const assessmentType = searchParams.get("assessmentType") ?? "mcq";
-  const questionType = searchParams.get("questionType") ?? "MCQ";
-
-  const [screen, setScreen] = useState<Screen>("intro");
-  const [questions, setQuestions] = useState<MCQQuestionPublic[]>([]);
-  const [assessment, setAssessment] = useState<AssessmentRead | null>(null);
-  const [results, setResults] = useState<AssessmentCompletionResponse | null>(null);
+  const mode = searchParams.get("mode") || "quick";
+  const category = searchParams.get("category") || "capability-profile";
+  const questionType = (searchParams.get("questionType") || "MIXED").toUpperCase();
+  const assessmentType = searchParams.get("assessmentType") || (questionType === "SITUATIONAL" ? "situational" : "capability");
+  const screenTitle = searchParams.get("title");
+  const assignmentId = searchParams.get("assignmentId");
+  const durationMinutes = Number(searchParams.get("duration") || 0);
+  const [assessmentId, setAssessmentId] = useState("");
+  const [questions, setQuestions] = useState<PublicQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [answerCorrectness, setAnswerCorrectness] = useState<Record<string, { isCorrect: boolean, correctOptionId: string }>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isStarting, setIsStarting] = useState(false);
-  const [isFinishing, setIsFinishing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
-  const [deadlineAt, setDeadlineAt] = useState<number | null>(null);
-  const [remainingAttempts, setRemainingAttempts] = useState(defaultAttemptLimit);
-  const [integrityNotice, setIntegrityNotice] = useState<IntegrityNotice | null>(null);
-  const [showIntegrityModal, setShowIntegrityModal] = useState(false);
-  const [hasHydratedAttemptState, setHasHydratedAttemptState] = useState(false);
-  const [randomLimit] = useState(15);
+  const [result, setResult] = useState<AssessmentResult | null>(null);
+  const [isBusy, setIsBusy] = useState(false);
+  const [error, setError] = useState("");
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const integrityTriggeredRef = useRef(false);
-  const integrityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [warningCountdown, setWarningCountdown] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
 
-  const trackKey = useMemo(
-    () =>
-      [
-        skillRequestId ?? "skill-request:none",
-        skillId ?? "skill:none",
-        category,
-        difficulty ?? "difficulty:any",
-        assessmentType,
-        questionType,
-      ].join("::"),
-    [assessmentType, category, difficulty, questionType, skillId, skillRequestId],
-  );
-  const persistedAttemptStorageKey = useMemo(
-    () => `celtm-assessment-active:${trackKey}`,
-    [trackKey],
-  );
-  const attemptsStorageKey = useMemo(
-    () => `celtm-assessment-remaining:${trackKey}`,
-    [trackKey],
-  );
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
-  const effectiveQuestionType = questions[0]?.question_type ?? questionType;
-  const requestedAssessmentModeLabel =
-    questionType === "SITUATIONAL" ? "Situational" : "MCQ";
-  const assessmentModeLabel =
-    effectiveQuestionType === "SITUATIONAL" ? "Situational" : "MCQ";
-  const currentQuestion = questions[currentIndex] ?? null;
-  const answeredCount = Object.keys(answers).length;
-  const progress = questions.length ? ((currentIndex + 1) / questions.length) * 100 : 0;
-  const assessmentLabel = skillRequestId ? "Skill validation track" : toTitleCase(category);
-  const durationMinutes = useMemo(() => deriveDurationMinutes(questions.length), [questions.length]);
-  const finishAssessmentEvent = useEffectEvent((options?: FinishAssessmentOptions) => {
-    void finishAssessment(options);
-  });
+  const title = useMemo(() => {
+    if (screenTitle) return screenTitle;
+    if (category !== "capability-profile") return `${category} Assessment`;
+    if (mode === "deep") return "Deep Capability Assessment";
+    if (mode === "standard") return "Standard Capability Assessment";
+    return "Quick Capability Assessment";
+  }, [category, mode, screenTitle]);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadQuestions = async () => {
-      const persistedAttempt = readPersistedAssessmentAttempt(persistedAttemptStorageKey);
-      const nextRemainingAttempts = readRemainingAttempts(attemptsStorageKey);
-
-      integrityTriggeredRef.current = false;
-      setRemainingAttempts(nextRemainingAttempts);
-      setError(null);
-      setShowIntegrityModal(false);
-      setHasHydratedAttemptState(false);
-
-      if (persistedAttempt?.questions.length) {
-        const restoredTimeLeft =
-          persistedAttempt.deadlineAt == null
-            ? deriveDurationMinutes(persistedAttempt.questions.length) * 60
-            : Math.max(0, Math.ceil((persistedAttempt.deadlineAt - Date.now()) / 1000));
-
-        if (!isMounted) {
-          return;
-        }
-
-        setQuestions(persistedAttempt.questions);
-        setAssessment(persistedAttempt.assessment);
-        setAnswers(persistedAttempt.answers);
-        setCurrentIndex(
-          Math.min(
-            Math.max(persistedAttempt.currentIndex, 0),
-            Math.max(persistedAttempt.questions.length - 1, 0),
-          ),
-        );
-        setResults(persistedAttempt.results);
-        setIntegrityNotice(persistedAttempt.integrityNotice);
-        setShowIntegrityModal(Boolean(persistedAttempt.integrityNotice));
-        setDeadlineAt(
-          persistedAttempt.screen === "question" && !persistedAttempt.results
-            ? persistedAttempt.deadlineAt
-            : null,
-        );
-        setTimeLeft(persistedAttempt.screen === "question" ? restoredTimeLeft : 0);
-        setScreen(
-          persistedAttempt.screen === "results" && persistedAttempt.results
-            ? "results"
-            : persistedAttempt.screen === "question" && persistedAttempt.assessment
-              ? "question"
-              : "intro",
-        );
-        setIsLoading(false);
-        setHasHydratedAttemptState(true);
-        return;
+  const completeAssessment = useCallback(async () => {
+    try {
+      setIsBusy(true);
+      const completion = await apiFetch<AssessmentResult>(`/assessments/${assessmentId}/complete`, { method: "POST" });
+      setResult(completion);
+      setIsFullscreen(false);
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
       }
-
-      try {
-        setIsLoading(true);
-        setError(null);
-        setScreen("intro");
-        setQuestions([]);
-        setAssessment(null);
-        setResults(null);
-        setAnswers({});
-        setCurrentIndex(0);
-        setDeadlineAt(null);
-        setTimeLeft(25 * 60);
-        setIntegrityNotice(null);
-        const controller = new AbortController();
-        const timeoutId = window.setTimeout(() => controller.abort(), 20_000);
-        const payload = await apiFetch<MCQQuestionBatchResponse>(
-          "/mcq/questions?" +
-            new URLSearchParams({
-              category,
-              ...(difficulty ? { difficulty } : {}),
-              ...(skillId ? { skill_id: skillId } : {}),
-              ...(skillRequestId ? { skill_request_id: skillRequestId } : {}),
-              question_type: questionType,
-              limit: randomLimit.toString(),
-            }).toString(),
-          { signal: controller.signal, revalidate: true, cache: "no-store" },
-        ).finally(() => window.clearTimeout(timeoutId));
-        if (!isMounted) {
-          return;
-        }
-        setQuestions(payload.questions);
-        setTimeLeft(deriveDurationMinutes(payload.questions.length) * 60);
-        if (!payload.questions.length) {
-          setError(`No test material available`);
-        }
-      } catch (caught) {
-        if (!isMounted) {
-          return;
-        }
-        console.error("Quiz load error:", caught);
-        let message =
-          "This assessment is taking too long to load. Please click Retry. If it persists, check the backend logs (Supabase/OpenAI) and confirm `http://127.0.0.1:8000/docs` opens.";
-        if (caught instanceof ApiError) {
-          if (caught.message.includes("No test material available") || caught.message.includes("Subject not available")) {
-            message = "No test material available";
-          } else {
-            message = caught.message;
-          }
-        } else if (caught instanceof DOMException && caught.name === "AbortError") {
-          message =
-            "Timed out while loading questions (20s). Click Retry. If it keeps timing out, the backend is slow/unreachable.";
-        }
-        setError(message);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-          setHasHydratedAttemptState(true);
-        }
-      }
-    };
-
-    void loadQuestions();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [
-    attemptsStorageKey,
-    category,
-    difficulty,
-    persistedAttemptStorageKey,
-    questionType,
-    requestedAssessmentModeLabel,
-    randomLimit,
-    skillId,
-    skillRequestId,
-  ]);
-
-  useEffect(() => {
-    if (screen !== "question" || results || deadlineAt == null) {
-      return;
+      setWarningCountdown(null);
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : "Could not submit assessment.");
+    } finally {
+      setIsBusy(false);
     }
+  }, [assessmentId]);
 
-    const updateTimer = () => {
-      const remainingSeconds = Math.max(0, Math.ceil((deadlineAt - Date.now()) / 1000));
-      setTimeLeft(remainingSeconds);
+  const exitAssessment = useCallback(() => {
+    setIsFullscreen(false);
+    setWarningCountdown(null);
+    setRemainingSeconds(null);
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+    router.push("/assessments");
+  }, [router]);
 
-      if (remainingSeconds === 0) {
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && isFullscreen && !result) {
+        event.preventDefault();
+        exitAssessment();
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && isFullscreen && assessmentId && !result) {
+        exitAssessment();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    };
+  }, [assessmentId, exitAssessment, isFullscreen, result]);
+
+  useEffect(() => {
+    // Focus loss detector
+    const handleVisibilityChange = () => {
+      if (document.hidden && assessmentId && !result) {
+        // Tab lost focus
+        setWarningCountdown(10);
+      } else {
+        if (warningCountdown !== null) {
+          // Came back, clear warning if not finished
+          setWarningCountdown(null);
         }
-        finishAssessmentEvent({
-          automatic: true,
-          errorMessage: "Time expired. Finalising the attempt...",
-        });
       }
     };
 
-    updateTimer();
-    timerRef.current = setInterval(() => {
-      updateTimer();
-    }, 1000);
-
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
-    };
-  }, [deadlineAt, results, screen]);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [assessmentId, result, warningCountdown]);
 
   useEffect(() => {
-    if (!hasHydratedAttemptState) {
-      return;
+    if (warningCountdown !== null && warningCountdown > 0) {
+      countdownRef.current = setTimeout(() => {
+        setWarningCountdown(warningCountdown - 1);
+      }, 1000);
+    } else if (warningCountdown === 0) {
+      // Auto submit
+      void completeAssessment();
     }
-
-    if (!assessment && !results && screen === "intro") {
-      clearPersistedAssessmentAttempt(persistedAttemptStorageKey);
-      return;
-    }
-
-    writePersistedAssessmentAttempt(persistedAttemptStorageKey, {
-      version: 1,
-      assessment,
-      answers,
-      currentIndex,
-      deadlineAt,
-      integrityNotice,
-      questions,
-      results,
-      screen,
-    });
-  }, [
-    answers,
-    assessment,
-    currentIndex,
-    deadlineAt,
-    hasHydratedAttemptState,
-    integrityNotice,
-    persistedAttemptStorageKey,
-    questions,
-    results,
-    screen,
-  ]);
-
-  useEffect(() => {
-    const handleFocusLoss = () => {
-      if (document.visibilityState !== "hidden") return;
-      if (screen !== "question" || !assessment || results || integrityTriggeredRef.current) return;
-
-      // Debounce focus loss to avoid accidental triggers
-      if (integrityTimeoutRef.current) clearTimeout(integrityTimeoutRef.current);
-      
-      integrityTimeoutRef.current = setTimeout(() => {
-        if (document.visibilityState !== "hidden") return;
-
-        integrityTriggeredRef.current = true;
-        const nextRemainingAttempts = Math.max(0, readRemainingAttempts(attemptsStorageKey) - 1);
-        writeRemainingAttempts(attemptsStorageKey, nextRemainingAttempts);
-        setRemainingAttempts(nextRemainingAttempts);
-
-        const notice: IntegrityNotice = {
-          reason: "focus-loss",
-          message:
-            nextRemainingAttempts > 0
-              ? "You switched tabs or windows. This attempt was auto-submitted and one attempt was deducted."
-              : "You switched tabs or windows. This attempt was auto-submitted and no attempts remain for this track.",
-          remainingAttempts: nextRemainingAttempts,
-          recordedAt: Date.now(),
-        };
-
-        setIntegrityNotice(notice);
-        setShowIntegrityModal(true);
-        finishAssessmentEvent({
-          automatic: true,
-          errorMessage: "Focus changed. Finalising the attempt...",
-          keepalive: true,
-          notice,
-        });
-      }, 500);
-    };
-
-    document.addEventListener("visibilitychange", handleFocusLoss);
-    window.addEventListener("blur", handleFocusLoss);
-
     return () => {
-      document.removeEventListener("visibilitychange", handleFocusLoss);
-      window.removeEventListener("blur", handleFocusLoss);
-      if (integrityTimeoutRef.current) clearTimeout(integrityTimeoutRef.current);
+      if (countdownRef.current) clearTimeout(countdownRef.current);
     };
-  }, [assessment, attemptsStorageKey, results, screen]);
+  }, [completeAssessment, warningCountdown]);
 
-  const refillAttempts = () => {
-    writeRemainingAttempts(attemptsStorageKey, defaultAttemptLimit);
-    setRemainingAttempts(defaultAttemptLimit);
-    setError(null);
-    integrityTriggeredRef.current = false;
-    setIntegrityNotice(null);
+  // Request Fullscreen
+  const enterFullscreen = () => {
+    const elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => setIsFullscreen(true));
+    } else {
+      setIsFullscreen(true);
+    }
   };
 
-  const startAssessment = async () => {
-    if (remainingAttempts <= 0) {
-      setError("No attempts remain for this assessment track. Use the restore button below to reset your session.");
-      return;
-    }
-
-    if (!questions.length) {
-      setError(`No test material available`);
-      return;
-    }
-
+  const start = async () => {
     try {
-      setIsStarting(true);
-      setError(null);
-      integrityTriggeredRef.current = false;
-      setIntegrityNotice(null);
-      setShowIntegrityModal(false);
-      const created = await apiFetch<AssessmentRead>("/assessments", {
+      setIsBusy(true);
+      setError("");
+      setResult(null);
+      enterFullscreen();
+      const created = await apiFetch<{ id: string }>("/assessments", {
         method: "POST",
         body: JSON.stringify({
-          category,
+          mode,
           assessment_type: assessmentType,
-          question_type: effectiveQuestionType,
-          skill_id: skillId,
-          skill_request_id: skillRequestId,
+          question_type: questionType,
+          category,
+          assignment_id: assignmentId,
         }),
       });
-      setAssessment(created);
-      setCurrentIndex(0);
-      setAnswers({});
-      setResults(null);
-      setScreen("question");
-      const nextDeadlineAt = Date.now() + durationMinutes * 60 * 1000;
-      setDeadlineAt(nextDeadlineAt);
-      setTimeLeft(durationMinutes * 60);
-    } catch (caught) {
-      let message = "Unable to initialise the assessment.";
-      if (caught instanceof ApiError) {
-        message = caught.message;
+      setAssessmentId(created.id);
+      if (assignmentId && durationMinutes > 0) {
+        setRemainingSeconds(durationMinutes * 60);
       }
-      setError(message);
+      await loadQuestions(created.id);
+    } catch (caught) {
+      setError(caught instanceof ApiError ? caught.message : "Could not start assessment.");
+      setIsFullscreen(false);
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
     } finally {
-      setIsStarting(false);
+      setIsBusy(false);
     }
   };
 
-  const selectAnswer = async (optionId: string) => {
-    if (!assessment || !currentQuestion || answers[currentQuestion.id]) {
-      return;
-    }
-
-    const nextAnswers = {
-      ...answers,
-      [currentQuestion.id]: optionId,
-    };
-    setAnswers(nextAnswers);
-
+  const loadQuestions = async (id = assessmentId) => {
     try {
-      const res = await apiFetch<{ 
-        assessment_id: string; 
-        answers_recorded: number; 
-        results?: Array<{ question_id: string; selected_option_id: string; is_correct: boolean; correct_option_id?: string }> 
-      }>(`/assessments/${assessment.id}/answers`, {
-        method: "POST",
-        body: JSON.stringify({
-          answers: [
-            {
-              question_id: currentQuestion.id,
-              selected_option_id: optionId,
-            },
-          ],
-        }),
+      const payload = await apiFetch<QuestionsPayload>(`/assessments/${id}/questions`, {
+        cache: "no-store",
       });
 
-      if (res.results) {
-        const answerInfo = res.results.find(r => r.question_id === currentQuestion.id);
-        if (answerInfo && answerInfo.correct_option_id) {
-          setAnswerCorrectness(prev => ({
-            ...prev,
-            [currentQuestion.id]: { 
-              isCorrect: answerInfo.is_correct, 
-              correctOptionId: answerInfo.correct_option_id!
-            }
-          }));
-        }
+      if (!payload) {
+        throw new Error("Empty response from server");
       }
-
-    } catch (caught) {
-      const message = caught instanceof ApiError ? caught.message : "Failed to save the selected answer.";
-      setError(message);
-      return;
-    }
-
-    // Wait slightly longer so the user can see if they got it right/wrong
-    window.setTimeout(() => {
-      if (currentIndex >= questions.length - 1) {
-        void finishAssessment();
+      if (payload.status === "completed") {
+        const completion = await apiFetch<AssessmentResult>(`/assessments/${id}/complete`, { method: "POST" });
+        setResult(completion);
+        setIsFullscreen(false);
         return;
       }
-      setCurrentIndex((previous) => previous + 1);
-    }, 1500);
+      if (!payload.questions) {
+        throw new Error("Invalid response format: missing questions");
+      }
+      if (payload.questions.length === 0) {
+        throw new Error("Subject not available at the moment.");
+      }
+      setQuestions(payload.questions);
+      setAnswers(payload.answers || {});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error loading questions");
+      setIsFullscreen(false);
+    }
   };
 
+  const answer = async (optionId: string) => {
+    const question = questions[currentIndex];
+    if (!assessmentId || !question || isBusy) return;
 
-  const finishAssessment = async (options: FinishAssessmentOptions = {}) => {
-    if (!assessment || isFinishing || results) {
-      return;
-    }
+    // Optimistic update
+    setAnswers(prev => ({ ...prev, [question.id]: optionId }));
 
     try {
-      setIsFinishing(true);
-      setScreen("submitting"); // ← immediately show loading screen
-      if (options.notice) {
-        setIntegrityNotice(options.notice);
-      }
-      setError(options.automatic ? (options.errorMessage ?? "Finalising the attempt...") : null);
-      const completion = await apiFetch<AssessmentCompletionResponse>(`/assessments/${assessment.id}/complete`, {
-        method: "POST",
-        keepalive: options.keepalive,
-      });
-      setResults(completion);
-      setScreen("results");
-      setDeadlineAt(null);
-      setTimeLeft(0);
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      await apiFetch<{ is_correct: boolean; correct_option_id: string; completed: boolean }>(
+        `/assessments/${assessmentId}/answer`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            question_id: question.id,
+            selected_answer: optionId,
+          }),
+        },
+      );
     } catch (caught) {
-      const message = caught instanceof ApiError ? caught.message : "Failed to finalise the assessment.";
-      setError(message);
-      setScreen("question"); // revert so user can retry
-    } finally {
-      setIsFinishing(false);
+      setError(caught instanceof ApiError ? caught.message : "Could not submit answer.");
     }
   };
 
-  const retryLoad = () => {
-    window.location.reload();
-  };
+  useEffect(() => {
+    if (!assessmentId || result || remainingSeconds === null) {
+      return;
+    }
+    if (remainingSeconds <= 0) {
+      void completeAssessment();
+      return;
+    }
+    const timeoutId = setTimeout(() => {
+      setRemainingSeconds((current) => (current === null ? null : Math.max(0, current - 1)));
+    }, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [assessmentId, completeAssessment, remainingSeconds, result]);
 
-  const formattedTime = `${Math.floor(timeLeft / 60)}:${String(timeLeft % 60).padStart(2, "0")}`;
-  const timerTone =
-    timeLeft <= 120 ? "text-red-400" : timeLeft <= 300 ? "text-amber-400" : "text-emerald-400";
+  const formattedRemaining = remainingSeconds === null
+    ? null
+    : `${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`;
 
-  if (isLoading) {
+  if (result) {
+    const profile = result.capability_profile || {};
+    const correct = result.correct_answers || 0;
+    const total = result.total_questions || 1;
+    const wrong = total - correct;
+    const liveReadiness = result.readiness_score ?? result.score;
+    const readinessComponents = result.readiness_components ?? [];
+
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-6 dark:bg-surface-container-lowest">
-        <div className="text-center">
-          <div className="w-14 h-14 rounded-2xl border border-indigo-500/30 border-t-indigo-400 animate-spin mx-auto mb-5" />
-          <p className="text-[11px] font-black uppercase tracking-[0.25em] text-primary mb-2">Synthesizing Question Bank</p>
-          <p className="text-[12px] text-on-surface-variant max-w-xs mx-auto">
-            AI is calibrating situational vectors and technical items for this track. This usually takes 10-15 seconds.
-          </p>
+      <div className="mx-auto max-w-[1400px] space-y-8 px-5 py-8">
+        <div className="flex items-center justify-between">
+          <Link href="/assessments" className="text-sm font-bold text-on-surface-variant hover:text-on-surface">Back to assessments</Link>
+          <span className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">Complete</span>
         </div>
-      </div>
-    );
-  }
 
-  if (screen === "intro") {
-    return (
-      <div className="min-h-screen bg-background px-6 py-8 dark:bg-surface-container-lowest">
-        <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-4xl items-center justify-center">
-          <div className="clay-card w-full rounded-[40px] p-8 text-center md:p-10">
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.25em] text-primary">
-              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-              CELTM assessment protocol
-            </div>
-            <h1 className="mb-5 text-4xl font-black tracking-tight text-on-surface md:text-6xl">{title}</h1>
-            <p className="mx-auto mb-10 max-w-2xl text-base leading-relaxed text-on-surface-variant md:text-lg">
-              Live questions, real scoring persistence, and backend-linked progress updates. This attempt feeds your verified skill graph directly.
-            </p>
-
-            <div className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-5">
-              {[
-                { label: "Question bank", value: `${questions.length} live items` },
-                { label: "Scope", value: assessmentLabel },
-                { label: "Difficulty", value: difficulty ? toTitleCase(difficulty) : "Adaptive" },
-                { label: "Runtime", value: `${durationMinutes} min window` },
-                { label: "Attempts left", value: `${remainingAttempts} remaining` },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className={`lift-tile rounded-3xl border transition-all ${
-                    item.label === "Question bank" && questions.length > 0
-                      ? "border-emerald-500/30 bg-emerald-500/5"
-                      : "border-outline-variant/12 dark:border-transparent bg-surface-container-low"
-                  } p-5 text-left`}
-                >
-                  <p className="mb-2 text-[10px] font-black uppercase tracking-[0.25em] text-on-surface-variant">{item.label}</p>
-                  <p className={`text-sm font-bold ${item.label === "Question bank" && questions.length > 0 ? "text-emerald-300" : "text-on-surface"}`}>
-                    {item.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mb-10 rounded-[32px] border border-outline-variant/12 dark:border-transparent bg-surface-container-low p-6 text-left md:p-8">
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-                <div>
-                  <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Assessment logic</p>
-                  <p className="text-sm leading-relaxed text-on-surface-variant">
-                    Each answer is written to the backend immediately. Completion persists the final score and updates downstream skill signals.
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Timing</p>
-                  <p className="text-sm leading-relaxed text-on-surface-variant">
-                    The timer is enforced in-session. If it expires, the attempt is auto-completed with whatever has already been recorded.
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Promotion flow</p>
-                  <p className="text-sm leading-relaxed text-on-surface-variant">
-                    When this is linked to a skill request, the assessment score feeds the promotion gate used by written and interview validation.
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-primary">Integrity rule</p>
-                  <p className="text-sm leading-relaxed text-on-surface-variant">
-                    Switching tabs or windows auto-submits the test, shows an integrity warning, and deducts one remaining attempt for this track.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {error ? (
-              <div className="mb-8 space-y-4">
-                <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-5">
-                  <p className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-red-300">
-                    {error.includes("No test material available") || error.includes("Subject not available") ? "No Test Material Available" : error.includes("No attempts") ? "Attempts Exhausted" : "Assessment Unavailable"}
-                  </p>
-                  <p className="text-sm leading-relaxed text-red-200">
-                    {error}
-                  </p>
-                </div>
-                {error.includes("No attempts") && (
-                  <button
-                    onClick={refillAttempts}
-                    className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-emerald-300 transition hover:bg-emerald-500/25"
-                  >
-                    <span className="material-symbols-outlined text-base">refresh</span>
-                    Restore Session Attempts
-                  </button>
-                )}
-                {error.includes("No test material available") || error.includes("Subject not available") ? (
-                  <div className="flex gap-3">
-                    <button
-                      onClick={retryLoad}
-                      className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-indigo-500/10 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-indigo-400 transition hover:bg-indigo-500/20"
-                    >
-                      <span>Retry</span>
-                    </button>
-                    <Link
-                      href="/assessments"
-                      className="flex-1 flex items-center justify-center rounded-2xl bg-surface-container-high py-3 text-[11px] font-black uppercase tracking-[0.2em] text-on-surface-variant transition hover:bg-surface-container"
-                    >
-                      Back to Assessments
-                    </Link>
-                  </div>
-                ) : null}
-                {remainingAttempts <= 0 && !error.includes("No attempts") && (
-                  <button
-                    onClick={refillAttempts}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500/10 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-emerald-400 transition hover:bg-emerald-500/20"
-                  >
-                    <span className="material-symbols-outlined text-base">refresh</span>
-                    Restore Session Attempts
-                  </button>
-                )}
-              </div>
-            ) : null}
-
-            <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link
-                href="/assessments"
-                className="rounded-full border border-outline-variant/12 dark:border-transparent px-6 py-3 text-sm font-bold text-on-surface-variant transition-all hover:bg-surface-container-low"
-              >
-                Back to assessments
-              </Link>
-              <button
-                onClick={() => void startAssessment()}
-                disabled={isStarting || !questions.length || remainingAttempts <= 0 || !!error}
-                className="rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 px-8 py-3 text-sm font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {isStarting ? "Initialising..." : error ? (error.includes("No test material available") || error.includes("Subject not available") ? "No Questions" : "Unavailable") : remainingAttempts <= 0 ? "Attempts Exhausted" : !questions.length ? "Loading questions..." : "Begin live attempt"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (screen === "submitting") {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background dark:bg-surface-container-lowest px-6">
-        <div className="flex flex-col items-center gap-8 text-center">
-          {/* Animated orbit spinner */}
-          <div className="relative h-24 w-24">
-            <div className="absolute inset-0 rounded-full border-4 border-primary/10" />
-            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
-            <div
-              className="absolute inset-2 rounded-full border-4 border-transparent border-t-primary/40 animate-spin"
-              style={{ animationDuration: "1.4s", animationDirection: "reverse" }}
-            />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <svg className="h-7 w-7 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <div className="grid lg:grid-cols-[1fr_2fr] gap-6">
+          <section className="clay-card rounded-[36px] p-8 text-center flex flex-col justify-center items-center bg-gradient-to-br from-primary/5 to-transparent border border-primary/10">
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-primary">Updated readiness</p>
+            <div className="relative my-8">
+              <svg className="w-48 h-48 -rotate-90 transform" viewBox="0 0 160 160">
+                <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-surface-container-high" />
+                <circle
+                  cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="12" fill="transparent"
+                  strokeDasharray={2 * Math.PI * 70}
+                  strokeDashoffset={2 * Math.PI * 70 * (1 - Math.max(0, Math.min(100, liveReadiness)) / 100)}
+                  strokeLinecap="round"
+                  className="text-primary transition-all duration-1000 ease-out"
+                />
               </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <p className="text-5xl font-black text-on-surface">{Math.round(liveReadiness)}%</p>
+                <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Global</p>
+              </div>
             </div>
-          </div>
-
-          {/* Label */}
-          <div className="space-y-2">
-            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-primary">
-              Submitting Assessment
+            <p className="max-w-sm text-sm font-bold leading-6 text-on-surface-variant">
+              Objective score: {Math.round(result.score)}%. Global readiness blends resume, objective assessments, written work, and credential evidence.
             </p>
-            <h2 className="text-2xl font-extrabold tracking-tight text-on-surface">
-              Calculating your results
-            </h2>
-            <p className="text-sm text-on-surface-variant max-w-xs leading-6">
-              Your answers are being scored and your skill profile is updating. This only takes a moment.
-            </p>
-          </div>
 
-          {/* Animated step indicators */}
-          <div className="flex flex-col gap-3 w-full max-w-xs">
-            {[
-              "Saving your answers",
-              "Running AI scoring",
-              "Updating skill profile",
-            ].map((step, i) => (
-              <div
-                key={step}
-                className="flex items-center gap-3 rounded-2xl bg-surface-container-low px-4 py-3"
-                style={{ animation: `fadeIn 0.4s ease ${i * 0.15}s both` }}
-              >
-                <div className="h-2 w-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />
-                <span className="text-xs font-bold text-on-surface-variant">{step}</span>
+            <div className="grid grid-cols-2 gap-4 w-full mt-5 sm:grid-cols-4">
+              <div className="rounded-2xl bg-primary/10 p-3">
+                <p className="text-xs font-bold text-primary uppercase">Exam score</p>
+                <p className="text-xl font-black text-primary mt-1">{Math.round(result.score)}%</p>
               </div>
-            ))}
-          </div>
-        </div>
-
-        <style>{`
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to   { opacity: 1; transform: translateY(0); }
-          }
-        `}</style>
-      </div>
-    );
-  }
-
-  if (screen === "results" && results) {
-    const readinessBand =
-      results.score >= 80 ? "Expert" : results.score >= 65 ? "Advanced" : results.score >= 50 ? "Intermediate" : "Developing";
-
-    return (
-      <div className="min-h-screen bg-background px-6 py-10 dark:bg-surface-container-lowest">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <Link href="/assessments" className="text-sm font-bold text-on-surface-variant transition hover:text-on-surface">
-              Back to assessments
-            </Link>
-            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-primary">Assessment complete</span>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div className="clay-card rounded-[32px] p-8">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-primary mb-3">Readiness result</p>
-              <div className="text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-indigo-400 to-violet-600 mb-3">
-                {Math.round(results.score)}%
+              <div className="rounded-2xl bg-surface-container-low p-3">
+                <p className="text-xs font-bold text-on-surface-variant uppercase">Total</p>
+                <p className="text-xl font-black text-on-surface mt-1">{total}</p>
               </div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-400/10 border border-indigo-400/20 text-indigo-300 text-xs font-bold mb-4">
-                {readinessBand} band
+              <div className="rounded-2xl bg-emerald-500/10 p-3">
+                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Correct</p>
+                <p className="text-xl font-black text-emerald-700 dark:text-emerald-300 mt-1">{correct}</p>
               </div>
-              <p className="text-sm leading-relaxed text-on-surface-variant">
-                Score persistence completed. This result is now available to your dashboard projections and role-fit computation.
-              </p>
+              <div className="rounded-2xl bg-red-500/10 p-3">
+                <p className="text-xs font-bold text-red-600 dark:text-red-400 uppercase">Wrong</p>
+                <p className="text-xl font-black text-red-700 dark:text-red-300 mt-1">{wrong}</p>
+              </div>
             </div>
-
-            <div className="clay-card rounded-[32px] p-8">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-on-surface-variant mb-5">Result breakdown</p>
-              <div className="space-y-4">
-                {[
-                  { label: "Correct answers", value: `${results.correct_answers}/${results.total_questions}` },
-                  { label: "Completion state", value: toTitleCase(results.status) },
-                  { label: "Track scope", value: assessmentLabel },
-                  { label: "Question type", value: toTitleCase(effectiveQuestionType) },
-                  { label: "Attempts left", value: `${remainingAttempts}` },
-                ].map((row) => (
-                  <div key={row.label} className="flex items-center justify-between border-b border-outline-variant/12 dark:border-transparent pb-3 last:border-b-0 last:pb-0">
-                    <span className="text-sm text-on-surface-variant">{row.label}</span>
-                    <span className="text-sm font-bold text-on-surface">{row.value}</span>
+            {readinessComponents.length ? (
+              <div className="mt-5 grid w-full gap-2 text-left">
+                {readinessComponents.map((component) => (
+                  <div key={component.key} className="flex items-center justify-between rounded-2xl bg-surface-container-low px-4 py-3">
+                    <span className="text-xs font-black uppercase tracking-widest text-on-surface-variant">{component.label}</span>
+                    <span className="text-sm font-black text-on-surface">{Math.round(component.score)}%</span>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
+            ) : null}
+          </section>
 
-          <div className="clay-card rounded-[32px] p-6 md:p-8 mb-8">
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-primary mb-4">Next actions</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Link href="/dashboard?refresh=1" className="lift-tile rounded-2xl border border-outline-variant/12 dark:border-transparent bg-surface-container-low p-5 transition-all hover:border-primary/20">
-                <p className="text-sm font-bold text-on-surface mb-2">Review dashboard impact</p>
-                <p className="text-xs leading-relaxed text-on-surface-variant">See how the new assessment score changes your readiness and role-fit projections.</p>
-              </Link>
-              <Link href="/assessments/written-protocol" className="lift-tile rounded-2xl border border-outline-variant/12 dark:border-transparent bg-surface-container-low p-5 transition-all hover:border-primary/20">
-                <p className="text-sm font-bold text-on-surface mb-2">Continue with written validation</p>
-                <p className="text-xs leading-relaxed text-on-surface-variant">Pair this result with a written response for fuller competency verification.</p>
-              </Link>
-            </div>
-          </div>
+          <div className="space-y-6">
+            <section className="clay-card rounded-[30px] p-8 bg-surface-container-low">
+              <p className="text-[11px] font-black uppercase tracking-[0.24em] text-primary mb-4">AI Inference & Analysis</p>
+              <div className="mt-8 rounded-3xl bg-surface-container-high p-6 text-center">
+                <p className="text-sm font-medium leading-relaxed text-on-surface">
+                  {result.inference?.insight || "Detailed analytics and inference have been saved to your profile. The system has updated your capabilities deterministically based on these responses."}
+                </p>
+              </div>
+            </section>
 
-          <div className="flex flex-wrap gap-4">
-            <button
-              onClick={() => {
-                setScreen("intro");
-                setAssessment(null);
-                setResults(null);
-                setAnswers({});
-                setCurrentIndex(0);
-                setError(null);
-                setDeadlineAt(null);
-                setIntegrityNotice(null);
-                setShowIntegrityModal(false);
-                integrityTriggeredRef.current = false;
-                clearPersistedAssessmentAttempt(persistedAttemptStorageKey);
-              }}
-              disabled={remainingAttempts <= 0}
-              className="rounded-full border border-outline-variant/12 dark:border-transparent px-6 py-3 text-sm font-bold text-on-surface-variant transition-all hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Attempt again
-            </button>
-            <Link
-              href="/assessments"
-              className="px-8 py-3 rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              Return to assessment console
-            </Link>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="clay-card rounded-[30px] p-6 border-l-4 border-l-emerald-500">
+                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-600 dark:text-emerald-400 mb-4">Hidden Skills Unlocked</p>
+                <div className="flex flex-wrap gap-2">
+                  {result.hidden_skills?.length ? (
+                    result.hidden_skills.map((skill, i) => {
+                      const skillStr = resultItemLabel(skill, "skill");
+                      return (
+                        <span key={i} className="px-4 py-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold text-sm">
+                          {skillStr}
+                        </span>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-on-surface-variant italic">No new hidden skills identified in this run.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="clay-card rounded-[30px] p-6 border-l-4 border-l-amber-500">
+                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-amber-600 dark:text-amber-400 mb-4">Areas of Betterment</p>
+                <div className="flex flex-wrap gap-2">
+                  {result.areas_of_betterment?.length ? (
+                    result.areas_of_betterment.map((area, i) => {
+                      const areaStr = resultItemLabel(area, "area");
+                      return (
+                        <span key={i} className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 font-bold text-sm">
+                          {areaStr}
+                        </span>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-on-surface-variant italic">No major areas of concern identified.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <section className="clay-card rounded-[30px] p-8">
+              <p className="text-[11px] font-black uppercase tracking-[0.24em] text-primary mb-6">Capability Profile Impact</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {Object.entries(profile).map(([dimension, score]) => (
+                  <div key={dimension} className="rounded-2xl bg-surface-container-low p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-on-surface text-sm">{dimension}</p>
+                      <p className="font-black text-primary text-sm">{Math.round(score)}%</p>
+                    </div>
+                    <div className="mt-3 h-1.5 rounded-full bg-surface-container-high">
+                      <div className="h-1.5 rounded-full bg-primary" style={{ width: `${Math.min(100, score)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-4 mt-8">
+          <Link href="/dashboard" className="rounded-2xl bg-primary px-8 py-4 text-[12px] font-black uppercase tracking-[0.2em] text-white hover:bg-primary/90 transition-colors">Dashboard impact</Link>
+          <button onClick={() => window.location.reload()} className="rounded-2xl bg-surface-container-high px-8 py-4 text-[12px] font-black uppercase tracking-[0.2em] text-on-surface hover:bg-surface-container-highest transition-colors">Attempt again</button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-on-surface dark:bg-surface-container-lowest">
-      <div className="mx-auto max-w-[1520px] px-4 py-6 md:px-5">
-        <div className="flex items-center justify-between mb-8 gap-4">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-primary mb-2">Live assessment feed</p>
-            <h1 className="text-2xl md:text-4xl font-black tracking-tight">{title}</h1>
-          </div>
-          <div className={`text-right ${timerTone}`}>
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] mb-1 text-on-surface-variant">Time remaining</p>
-            <p className="text-3xl font-black font-mono">{formattedTime}</p>
+    <div className={isFullscreen ? "fixed inset-0 z-50 bg-surface overflow-y-auto" : ""}>
+      {warningCountdown !== null && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-red-600/90 backdrop-blur-sm">
+          <div className="text-center text-white">
+            <h2 className="text-4xl font-black mb-4">Focus Lost!</h2>
+            <p className="text-xl mb-4">You switched tabs. The assessment will automatically submit in:</p>
+            <div className="text-8xl font-black">{warningCountdown}s</div>
+            <p className="mt-6 text-sm">Return to this tab immediately to continue.</p>
           </div>
         </div>
+      )}
 
-        <div className="h-2 rounded-full bg-surface-container-high overflow-hidden mb-8">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
+      <div className="mx-auto w-full max-w-[1600px] space-y-7 px-6 lg:px-10 py-8 h-full flex flex-col">
+        {!isFullscreen && (
+          <div className="flex items-center justify-between">
+            <Link href="/assessments" className="text-sm font-bold text-on-surface-variant hover:text-on-surface">Back to assessments</Link>
+            <span className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">{mode} mode</span>
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1.35fr,0.65fr] gap-6">
-          <main className="clay-card rounded-[36px] overflow-hidden">
-            <div className="px-8 py-6 border-b border-outline-variant/12 dark:border-transparent flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-primary mb-2">
-                  Question {currentIndex + 1} / {questions.length}
-                </p>
-                <p className="text-sm text-on-surface-variant">
-                  {currentQuestion
-                    ? `${toTitleCase(currentQuestion.category)} · ${toTitleCase(currentQuestion.difficulty)} · ${assessmentModeLabel}`
-                    : "Awaiting question"}
-                </p>
+        {error ? <div className="rounded-3xl bg-red-500/10 px-5 py-4 text-sm font-bold text-red-500">{error}</div> : null}
+
+        {!assessmentId ? (
+          <section className="clay-card rounded-[36px] p-8 md:p-10 flex-1">
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-primary">Secure assessment</p>
+            <h1 className="mt-3 text-4xl font-black tracking-tight text-on-surface">{title}</h1>
+            <p className="mt-4 max-w-2xl text-lg leading-8 text-on-surface-variant">
+              This assessment requires full-screen mode. If you switch tabs, you will have 10 seconds to return before it auto-submits.
+              {assignmentId && durationMinutes > 0 ? ` This assigned test has a ${durationMinutes}-minute duration.` : ""}
+            </p>
+            <button
+              onClick={start}
+              disabled={isBusy}
+              className="mt-8 rounded-full bg-primary px-8 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-white disabled:opacity-60"
+            >
+              {isBusy ? "Starting..." : "Begin live attempt"}
+            </button>
+          </section>
+        ) : questions.length > 0 ? (
+          <div className="flex flex-col lg:flex-row gap-8 flex-1 h-full">
+            {/* Sidebar Navigation */}
+            <div className="lg:w-64 flex flex-col gap-4">
+              <div className="clay-card rounded-3xl p-5">
+                <h3 className="font-black text-on-surface mb-4">Questions</h3>
+                <div className="grid grid-cols-4 lg:grid-cols-3 gap-2">
+                  {questions.map((q, idx) => {
+                    const isAnswered = !!answers[q.id];
+                    const isActive = currentIndex === idx;
+                    return (
+                      <button
+                        key={q.id}
+                        onClick={() => setCurrentIndex(idx)}
+                        className={`h-10 w-10 rounded-xl font-bold flex items-center justify-center transition-all ${
+                          isActive
+                            ? "bg-primary text-white scale-110 shadow-lg"
+                            : isAnswered
+                            ? "bg-emerald-500/20 text-emerald-700"
+                            : "bg-surface-container-high text-on-surface hover:bg-surface-container-highest"
+                        }`}
+                      >
+                        {idx + 1}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-              <button
-                onClick={() => void finishAssessment()}
-                disabled={isFinishing}
-                className="px-4 py-2 rounded-full border border-outline-variant/12 dark:border-transparent text-on-surface-variant text-xs font-bold uppercase tracking-[0.2em] hover:bg-surface-container-low transition-all disabled:opacity-40"
-              >
-                Finish now
-              </button>
+              <div className="clay-card rounded-3xl p-5 mt-auto">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-sm font-bold text-on-surface-variant">Progress</span>
+                  <span className="text-sm font-black text-primary">
+                    {Object.keys(answers).length} / {questions.length}
+                  </span>
+                </div>
+                {formattedRemaining ? (
+                  <div className="mb-4 rounded-2xl bg-surface-container-high px-4 py-3 text-center">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Time left</p>
+                    <p className="mt-1 font-mono text-2xl font-black text-primary">{formattedRemaining}</p>
+                  </div>
+                ) : null}
+                <button
+                  onClick={exitAssessment}
+                  type="button"
+                  className="mb-3 w-full rounded-2xl bg-surface-container-high py-3 text-[10px] font-black uppercase tracking-widest text-on-surface hover:bg-surface-container-highest transition-colors"
+                >
+                  Exit assessment
+                </button>
+                <button
+                  onClick={completeAssessment}
+                  disabled={isBusy}
+                  className="w-full rounded-2xl bg-[#0A1128] py-4 text-[11px] font-black uppercase tracking-widest text-white hover:bg-black transition-colors"
+                >
+                  {isBusy ? "Submitting..." : "Submit Test"}
+                </button>
+              </div>
             </div>
 
-            <div className="px-8 py-8 md:py-10">
-              {error ? (
-                <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 mb-6 text-sm text-red-200">
-                  {error}
+            {/* Question Content */}
+            <div className="flex-1 flex flex-col">
+              <section className="clay-card rounded-[36px] p-7 md:p-9 flex-1">
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b pb-6 border-outline-variant/30">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">
+                      {questions[currentIndex].dimension} - {questions[currentIndex].difficulty}
+                    </p>
+                    <h2 className="mt-2 text-xl font-black tracking-tight text-on-surface">Question {currentIndex + 1}</h2>
+                  </div>
                 </div>
-              ) : null}
 
-              {currentQuestion ? (
-                <>
-                  {currentQuestion.question_type === "SITUATIONAL" && currentQuestion.scenario ? (
-                    <div className="mb-6 rounded-3xl border border-amber-400/15 bg-amber-400/10 p-5">
-                      <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-amber-200">
-                        Scenario
-                      </p>
-                      <p className="text-sm leading-7 text-amber-50/85">
-                        {currentQuestion.scenario}
-                      </p>
-                    </div>
-                  ) : null}
+                {questions[currentIndex].scenario ? (
+                  <div className="mb-6 rounded-3xl bg-amber-500/10 p-5 text-base leading-7 text-amber-800 dark:text-amber-200">
+                    {questions[currentIndex].scenario}
+                  </div>
+                ) : null}
 
-                  <h2 className="text-2xl md:text-3xl font-bold tracking-tight leading-tight mb-8">
-                    {currentQuestion.question_text}
-                  </h2>
+                <h2 className="text-2xl lg:text-3xl font-black leading-snug text-on-surface dark:text-white mb-8">
+                  {questions[currentIndex].question_text}
+                </h2>
 
-                  <div className="grid grid-cols-1 gap-3">
-                    {currentQuestion.options.map((option, optionIndex) => {
-                      const selected = answers[currentQuestion.id] === option.id;
-                      const correctness = answerCorrectness[currentQuestion.id];
-                      
-                      let containerStyles = "bg-surface-container-low border-outline-variant/12 dark:border-transparent hover:bg-surface-container hover:border-primary/20";
-                      let letterStyles = "bg-surface border-outline-variant/12 dark:border-transparent text-on-surface-variant group-hover:text-on-surface";
-                      let textStyles = "text-on-surface font-medium";
-
-                      if (correctness) {
-                        const isThisOptionCorrect = option.id === correctness.correctOptionId;
-                        const isThisOptionSelectedAndWrong = selected && !correctness.isCorrect;
-
-                        if (isThisOptionCorrect) {
-                          containerStyles = "bg-emerald-500/15 border-emerald-400/50 shadow-xl shadow-emerald-500/10";
-                          letterStyles = "bg-emerald-500 border-emerald-400 text-white";
-                          textStyles = "text-emerald-950 dark:text-emerald-300 font-bold";
-                        } else if (isThisOptionSelectedAndWrong) {
-                          containerStyles = "bg-red-500/15 border-red-400/50 shadow-xl shadow-red-500/10";
-                          letterStyles = "bg-red-500 border-red-400 text-white";
-                          textStyles = "text-red-950 dark:text-red-300 font-bold";
-                        } else {
-                          containerStyles = "bg-surface-container-lowest border-outline-variant/5 dark:border-transparent cursor-not-allowed opacity-60";
-                          letterStyles = "bg-surface border-outline-variant/5 dark:border-transparent text-on-surface-variant/50";
-                          textStyles = "text-on-surface-variant/70 font-medium";
-                        }
-                      } else if (selected) {
-                        containerStyles = "bg-indigo-500/15 border-indigo-400/30 shadow-xl shadow-indigo-500/10";
-                        letterStyles = "bg-indigo-500 border-indigo-400 text-white";
-                        textStyles = "text-indigo-950 dark:text-white font-bold";
-                      }
-
+                <div className="flex-1 overflow-y-auto custom-scroll pr-2">
+                  <div className="flex flex-col gap-4">
+                    {questions[currentIndex]?.options?.map((opt) => {
+                      const isSelected = answers[questions[currentIndex].id] === opt.id;
                       return (
                         <button
-                          key={option.id}
-                          onClick={() => void selectAnswer(option.id)}
-                          disabled={Boolean(answers[currentQuestion.id]) || isFinishing}
-                          className={`lift-tile group relative p-6 md:p-8 rounded-[32px] border text-left flex items-start gap-5 transition-all duration-300 ${containerStyles} disabled:cursor-not-allowed`}
+                          key={opt.id}
+                          onClick={() => answer(opt.id)}
+                          className={`flex items-start gap-5 w-full rounded-[24px] border-2 p-6 text-left transition-all ${
+                            isSelected
+                              ? "border-primary bg-primary/5 shadow-md scale-[1.01]"
+                              : "border-outline-variant/30 bg-surface-container hover:border-primary/50 hover:bg-surface-container-high"
+                          }`}
                         >
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border text-base font-black transition-all ${letterStyles}`}>
-                            {letters[optionIndex] ?? optionIndex + 1}
+                          <div className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
+                            isSelected ? "border-primary bg-primary" : "border-outline-variant"
+                          }`}>
+                            {isSelected && <div className="h-2.5 w-2.5 rounded-full bg-white" />}
                           </div>
-                          <span className={`text-lg leading-relaxed transition-all ${textStyles}`}>
-                            {option.option_text}
+                          <span className={`text-xl font-medium leading-relaxed ${isSelected ? "text-primary font-bold" : "text-on-surface"}`}>
+                            {opt.option_text}
                           </span>
                         </button>
                       );
                     })}
                   </div>
-                </>
-              ) : (
-                <div className="text-center py-16">
-                  <p className="text-on-surface-variant mb-4">No question is currently loaded for this attempt.</p>
+                </div>
+
+                <div className="mt-10 flex justify-between items-center pt-6 border-t border-outline-variant/30">
                   <button
-                    onClick={retryLoad}
-                    className="px-6 py-3 rounded-full bg-indigo-500 text-white text-sm font-bold"
+                    onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+                    disabled={currentIndex === 0}
+                    className="px-6 py-3 rounded-full font-bold text-on-surface-variant hover:text-on-surface disabled:opacity-30 transition-colors"
                   >
-                    Reload
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setCurrentIndex(Math.min(questions.length - 1, currentIndex + 1))}
+                    disabled={currentIndex === questions.length - 1}
+                    className="px-8 py-3 rounded-full bg-primary/10 font-bold text-primary hover:bg-primary/20 disabled:opacity-30 transition-colors"
+                  >
+                    Next Question
                   </button>
                 </div>
-              )}
-            </div>
-          </main>
-
-          <aside className="space-y-6">
-            <div className="lift-card rounded-[32px] border border-outline-variant/12 dark:border-transparent bg-surface-container-low p-6">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-primary mb-4">Attempt telemetry</p>
-              <div className="space-y-4">
-                {[
-                  { label: "Recorded answers", value: `${answeredCount}/${questions.length}` },
-                  { label: "Assessment id", value: assessment?.id ? assessment.id.slice(0, 8) : "Pending" },
-                  { label: "Question type", value: effectiveQuestionType },
-                  { label: "Track", value: assessmentLabel },
-                  { label: "Attempts left", value: `${remainingAttempts}` },
-                ].map((row) => (
-                  <div key={row.label} className="flex items-center justify-between border-b border-outline-variant/12 dark:border-transparent pb-3 last:border-b-0 last:pb-0">
-                    <span className="text-sm text-on-surface-variant">{row.label}</span>
-                    <span className="text-sm font-bold text-on-surface">{row.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="lift-card rounded-[32px] border border-outline-variant/12 dark:border-transparent bg-surface-container-low p-6">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-primary mb-4">Question map</p>
-              <div className="grid grid-cols-5 gap-2">
-                {questions.map((question, index) => {
-                  const answered = Boolean(answers[question.id]);
-                  const active = index === currentIndex;
-                  return (
-                    <div
-                      key={question.id}
-                      className={`h-10 rounded-2xl flex items-center justify-center text-xs font-black border transition-all ${
-                        active
-                          ? "bg-indigo-500 text-white border-indigo-400"
-                          : answered
-                            ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20"
-                            : "bg-surface text-on-surface-variant border-outline-variant/12 dark:border-transparent"
-                      }`}
-                    >
-                      {index + 1}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="lift-card rounded-[32px] border border-outline-variant/12 dark:border-transparent bg-surface-container-low p-6">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-primary mb-4">Protocol notes</p>
-              <div className="space-y-3 text-sm text-on-surface-variant leading-relaxed">
-                <p>Each submission is written to the backend in real time. Leaving and returning to the page restores the live attempt instead of resetting it.</p>
-                <p>This attempt contributes directly to skill verification and downstream readiness projections.</p>
-                <p>Switching tabs or windows now triggers an automatic submission and deducts one remaining attempt for this track.</p>
-              </div>
-            </div>
-          </aside>
-        </div>
-      </div>
-
-      {showIntegrityModal && integrityNotice ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-6">
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-xl rounded-[32px] border border-red-500/20 bg-surface-container-low p-8 shadow-2xl shadow-black/40"
-          >
-            <p className="mb-3 text-[10px] font-black uppercase tracking-[0.25em] text-red-300">
-              Assessment integrity triggered
-            </p>
-            <h2 className="mb-4 text-2xl font-black tracking-tight text-on-surface">
-              Tab or window switch detected
-            </h2>
-            <p className="mb-6 text-sm leading-7 text-on-surface-variant">
-              {integrityNotice.message}
-            </p>
-            <div className="mb-6 rounded-3xl border border-outline-variant/12 dark:border-transparent bg-background/60 p-5">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-sm text-on-surface-variant">Remaining attempts</span>
-                <span className="text-lg font-black text-on-surface">{integrityNotice.remainingAttempts}</span>
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <button
-                onClick={() => setShowIntegrityModal(false)}
-                className="rounded-full bg-gradient-to-r from-indigo-500 to-violet-600 px-6 py-3 text-sm font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-indigo-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                Understood
-              </button>
+              </section>
             </div>
           </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function AssessmentQuizFallback() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-6 dark:bg-surface-container-lowest">
-      <div className="text-center">
-        <div className="w-14 h-14 rounded-2xl border border-indigo-500/30 border-t-indigo-400 animate-spin mx-auto mb-5" />
-        <p className="text-[11px] font-black uppercase tracking-[0.25em] text-on-surface-variant">
-          Loading assessment shell
-        </p>
+        ) : (
+          <section className="clay-card rounded-[36px] p-8 text-center flex-1 flex flex-col items-center justify-center">
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+            <p className="mt-6 text-base font-bold text-on-surface-variant">Loading your assessment environment...</p>
+          </section>
+        )}
       </div>
     </div>
   );
@@ -1120,8 +597,8 @@ function AssessmentQuizFallback() {
 
 export default function AssessmentQuizPage() {
   return (
-    <Suspense fallback={<AssessmentQuizFallback />}>
-      <AssessmentQuizPageContent />
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading...</div>}>
+      <QuizContent />
     </Suspense>
   );
 }

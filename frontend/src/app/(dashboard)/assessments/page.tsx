@@ -1,451 +1,371 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
-
-import { apiFetch, getApiErrorMessage, ApiError } from "@/lib/api";
-import type {
-  ArtifactRead,
-  LearningPathRead,
-  ProfileRead,
-  RoleFitRead,
-  SkillGapRead,
-  SkillRead,
-  SkillRequestRead,
-  WrittenAssessmentRead,
-} from "@/lib/celtm";
-import { formatPercent } from "@/lib/celtm";
-
-const SubjectCard = dynamic(() => import("@/components/dashboard/SubjectCard").then(mod => mod.SubjectCard), {
-  ssr: false,
-  loading: () => <div className="h-64 animate-pulse rounded-[32px] bg-surface-container-low" />
-});
-
-interface AssessmentsState {
-  profile: ProfileRead | null;
-  roleFit: RoleFitRead | null;
-  skills: SkillRead[];
-  gaps: SkillGapRead[];
-  learningPath: LearningPathRead | null;
-  skillRequests: SkillRequestRead[];
-  writtenSessions: WrittenAssessmentRead[];
-  discoveredSubjects: AssessmentSubject[];
-}
-
-interface AssessmentSubject {
-  key: string;
-  title: string;
-  description: string;
-  source: string;
-  severity: number;
-  currentScore: number;
-  resourceCount: number;
-  isAvailable: boolean;
-  skillId?: string | null;
-  skillRequestId?: string | null;
-}
-
-const initialState: AssessmentsState = {
-  profile: null,
-  roleFit: null,
-  skills: [],
-  gaps: [],
-  learningPath: null,
-  skillRequests: [],
-  writtenSessions: [],
-  discoveredSubjects: [],
-};
-
-function normalizeKey(value: string) {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
-}
+import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
+import type { AssessmentAssignmentRead, AssessmentLogEntry, DashboardSummary, SubjectDetail } from "@/lib/celtm";
+import { formatDateTime } from "@/lib/celtm";
+import { buildAssessmentQuizHref, buildWrittenAssessmentHref } from "@/lib/assessmentLinks";
+import AppIcon from "@/components/AppIcon";
+import CeltmProgressLoader from "@/components/CeltmProgressLoader";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 
 export default function AssessmentsHubPage() {
-  const router = useRouter();
-  const [data, setData] = useState<AssessmentsState>(initialState);
-  const [isCoreLoading, setIsCoreLoading] = useState(true);
-  const [isSubjectsLoading, setIsSubjectsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [reloadSeed, setReloadSeed] = useState(0);
-  const [requestForm, setRequestForm] = useState({ requestedName: "", description: "" });
-  const [requestNotice, setRequestNotice] = useState<string | null>(null);
-  const [isCreatingRequest, setIsCreatingRequest] = useState(false);
+  const [subjects, setSubjects] = useState<SubjectDetail[]>([]);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [logs, setLogs] = useState<AssessmentLogEntry[]>([]);
+  const [assignments, setAssignments] = useState<AssessmentAssignmentRead[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    let isMounted = true;
-    const loadAssessmentState = async (showLoading = true, revalidate = false) => {
-      try {
-        if (showLoading) {
-          setIsCoreLoading(true);
-          setIsSubjectsLoading(true);
-        }
-        setError(null);
-        const fetchOptions = { revalidate };
-        
-        // 1. Fast path: Core identity data
-        const corePromise = Promise.allSettled([
-          apiFetch<ProfileRead>("/profile/me", fetchOptions),
-          apiFetch<RoleFitRead>("/skills/me/role-fit", fetchOptions),
-          apiFetch<SkillRead[]>("/skills/me", fetchOptions),
-        ]).then(([p, rf, sk]) => {
-           if (isMounted) {
-             setData(curr => ({
-                ...curr,
-                profile: p.status === "fulfilled" ? p.value : null,
-                roleFit: rf.status === "fulfilled" ? rf.value : null,
-                skills: sk.status === "fulfilled" ? sk.value : [],
-             }));
-             if (
-               (p.status === "rejected" || rf.status === "rejected" || sk.status === "rejected") &&
-               !error
-             ) {
-               const firstFailure =
-                 p.status === "rejected"
-                   ? p.reason
-                   : rf.status === "rejected"
-                     ? rf.reason
-                     : sk.status === "rejected"
-                       ? sk.reason
-                       : null;
-               if (firstFailure) {
-                 setError(getApiErrorMessage(firstFailure, "Failed to load assessment workspace."));
-               }
-             }
-             if (showLoading) setIsCoreLoading(false);
-           }
-        });
-
-        // 2. Slow path: Subject gathering (EXCEPT learning path which we do asynchronously)
-        const subjectsPromise = Promise.allSettled([
-          apiFetch<SkillGapRead[]>("/skills/me/gaps", fetchOptions),
-          apiFetch<SkillRequestRead[]>("/skills/requests", fetchOptions),
-          apiFetch<WrittenAssessmentRead[]>("/written-assessments", fetchOptions),
-          apiFetch<AssessmentSubject[]>("/assessments/subjects", fetchOptions),
-        ]).then(([gapsResult, reqResult, waResult, subResult]) => {
-            if (isMounted) {
-              setData(curr => ({
-                ...curr,
-                gaps: gapsResult.status === "fulfilled" ? gapsResult.value : [],
-                skillRequests: reqResult.status === "fulfilled" ? reqResult.value : [],
-                writtenSessions: waResult.status === "fulfilled" ? waResult.value : [],
-                discoveredSubjects: subResult.status === "fulfilled" ? subResult.value : [],
-              }));
-              if (
-                (gapsResult.status === "rejected" ||
-                  reqResult.status === "rejected" ||
-                  waResult.status === "rejected" ||
-                  subResult.status === "rejected") &&
-                !error
-              ) {
-                const firstFailure =
-                  gapsResult.status === "rejected"
-                    ? gapsResult.reason
-                    : reqResult.status === "rejected"
-                      ? reqResult.reason
-                      : waResult.status === "rejected"
-                        ? waResult.reason
-                        : subResult.status === "rejected"
-                          ? subResult.reason
-                          : null;
-                if (firstFailure) {
-                  setError(getApiErrorMessage(firstFailure, "Failed to load assessment subjects."));
-                }
-              }
-              if (showLoading) setIsSubjectsLoading(false);
-            }
-        });
-
-        await Promise.allSettled([corePromise, subjectsPromise]);
-
-        // 3. Very Slow path: Learning path requires LLM generation
-        // Trigger this asynchronously after fast data is fetched so it doesn't block the backend worker
-        void apiFetch<LearningPathRead>("/learning/path", fetchOptions).then(lpResult => {
-            if (isMounted) {
-               setData(curr => ({ ...curr, learningPath: lpResult }));
-            }
-        }).catch(() => {});
-
-      } catch (caught) {
-        if (isMounted) setError(getApiErrorMessage(caught, "Failed to load the assessment workspace."));
-      } finally {
-        if (isMounted && showLoading) {
-            setIsCoreLoading(false);
-            setIsSubjectsLoading(false);
-        }
-      }
+    let active = true;
+    Promise.all([
+      apiFetch<SubjectDetail[]>("/assessments/subjects"),
+      apiFetch<DashboardSummary>("/dashboard/summary"),
+      apiFetch<AssessmentLogEntry[]>("/assessments/log"),
+      apiFetch<AssessmentAssignmentRead[]>("/assessments/assignments").catch(() => []),
+    ])
+      .then(([subjectPayload, summaryPayload, logPayload, assignmentPayload]) => {
+        if (!active) return;
+        setSubjects(subjectPayload);
+        setSummary(summaryPayload);
+        setLogs(logPayload);
+        setAssignments(assignmentPayload);
+      })
+      .catch((caught) => {
+        if (active) setError(caught instanceof Error ? caught.message : "Failed to load assessments.");
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
     };
-    
-    // Initial load (cache-first)
-    void loadAssessmentState(true, false);
-    
-    // Background refresh
-    void loadAssessmentState(false, true);
+  }, []);
 
-    return () => { isMounted = false; };
-  }, [reloadSeed]);
-
-  const focusRole = data.profile?.focus_role || data.roleFit?.role_name || "your target role";
-
-  const subjects = useMemo(() => {
-    const subjectMap = new Map<string, AssessmentSubject>();
-    const skillMap = new Map(data.skills.map((s) => [normalizeKey(s.skill_name), s]));
-    const gapMap = new Map(data.gaps.map((g) => [normalizeKey(g.skill_name), g]));
-    const moduleMap = new Map((data.learningPath?.modules ?? []).map((m) => [normalizeKey(m.skill_name), m]));
-    const requestMap = new Map(data.skillRequests.map((r) => [normalizeKey(r.requested_name), r]));
-
-    for (const request of data.skillRequests) {
-      const key = normalizeKey(request.requested_name);
-      const skill = skillMap.get(key);
-      const gap = gapMap.get(key);
-      const mod = moduleMap.get(key);
-      subjectMap.set(key, {
-        key,
-        title: request.requested_name,
-        description: (request.generated_payload?.description as string) || `Custom validation track for ${request.requested_name}.`,
-        source: "Custom Track",
-        severity: gap?.gap_severity ?? 0.8,
-        currentScore: skill?.verified_score ?? gap?.user_score ?? 0,
-        resourceCount: mod?.resources.length ?? 0,
-        isAvailable: true, // If it's a request, we assume it's being checked. Actually detail page will handle the real check.
-        skillId: skill?.skill_id,
-        skillRequestId: request.id,
-      });
-    }
-
-    for (const mod of data.learningPath?.modules ?? []) {
-      const key = normalizeKey(mod.skill_name);
-      if (subjectMap.has(key)) {
-        const existing = subjectMap.get(key)!;
-        existing.isAvailable = mod.is_available ?? true;
-        continue;
-      }
-      const skill = skillMap.get(key);
-      const gap = gapMap.get(key);
-      const request = requestMap.get(key);
-      subjectMap.set(key, {
-        key,
-        title: mod.skill_name,
-        description: mod.resources[0]?.content || `Core module for ${mod.skill_name}.`,
-        source: `Learning Path (W${mod.week})`,
-        severity: mod.gap_severity,
-        currentScore: skill?.verified_score ?? gap?.user_score ?? 0,
-        resourceCount: mod.resources.length,
-        isAvailable: mod.is_available ?? true,
-        skillId: skill?.skill_id,
-        skillRequestId: request?.id,
-      });
-    }
-
-    for (const gap of data.gaps) {
-      const key = normalizeKey(gap.skill_name);
-      if (subjectMap.has(key)) continue;
-      const skill = skillMap.get(key);
-      const request = requestMap.get(key);
-      subjectMap.set(key, {
-        key,
-        title: gap.skill_name,
-        description: `High-priority gap detected in ${gap.skill_name}.`,
-        source: "Gap Analysis",
-        severity: gap.gap_severity,
-        currentScore: skill?.verified_score ?? gap.user_score,
-        resourceCount: 0,
-        isAvailable: true, // Default to true, detail will check
-        skillId: skill?.skill_id,
-        skillRequestId: request?.id,
-      });
-    }
-
-    for (const sub of data.discoveredSubjects) {
-      const subData = sub as any;
-      if (subjectMap.has(sub.key)) {
-        const existing = subjectMap.get(sub.key)!;
-        // Enrich existing with database availability if source was just a gap/path module
-        if (existing.source === "Gap Analysis") {
-           existing.isAvailable = subData.is_available ?? true;
-        }
-        continue;
-      }
-      subjectMap.set(sub.key, {
-        key: sub.key,
-        title: sub.title,
-        description: sub.description,
-        source: "Skill Bank",
-        severity: sub.severity || 0.5,
-        currentScore: subData.current_score ?? null,
-        resourceCount: subData.resource_count || 0,
-        isAvailable: subData.is_available ?? true,
-        skillId: subData.skill_id,
-      });
-    }
-
-    return Array.from(subjectMap.values()).sort((a, b) => b.severity - a.severity);
-  }, [data]);
-
-  const createSkillRequest = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!requestForm.requestedName.trim()) return;
-    try {
-      setIsCreatingRequest(true);
-      setRequestNotice(null);
-      const created = await apiFetch<SkillRequestRead>("/skills/requests", {
-        method: "POST",
-        body: JSON.stringify({
-          requested_name: requestForm.requestedName.trim(),
-          requested_type: "skill",
-          description: requestForm.description.trim() || undefined,
-          strict_bank_match: true,
-        }),
-      });
-      setData((curr) => ({ ...curr, skillRequests: [created, ...curr.skillRequests] }));
-      setRequestForm({ requestedName: "", description: "" });
-      setRequestNotice(`${created.requested_name} is available now.`);
-      router.push(`/assessments/${normalizeKey(created.requested_name)}`);
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 404) {
-        setRequestNotice("Subject not available at the moment.");
-      } else {
-        setRequestNotice(getApiErrorMessage(err, "Failed to check subject."));
-      }
-    } finally {
-      setIsCreatingRequest(false);
-    }
-  };
-
-  const SubjectSkeleton = () => (
-    <div className="animate-pulse clay-card rounded-[32px] p-6 space-y-4">
-      <div className="h-3 w-32 rounded bg-on-surface-variant/20" />
-      <div className="h-6 w-48 rounded bg-on-surface-variant/15" />
-      <div className="h-4 w-full rounded bg-on-surface-variant/10" />
-      <div className="h-10 w-24 rounded-full bg-on-surface-variant/10" />
-    </div>
-  );
+  if (isLoading) {
+    return (
+      <CeltmProgressLoader
+        title="Loading assessments"
+        caption="Cooking your assessment map"
+        minHeightClassName="min-h-[70vh]"
+        stages={["Fetching subjects", "Checking assigned tests", "Reading recent attempts", "Preparing assessment cards"]}
+      />
+    );
+  }
 
   return (
-    <div className="mx-auto w-full max-w-[1520px] space-y-8 page-fade-in pb-12">
-      {error ? (
-        <div className="mx-2 rounded-3xl border border-amber-500/20 bg-amber-500/10 px-6 py-5 text-sm text-amber-200">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="leading-6">{error}</p>
-            <button
-              type="button"
-              onClick={() => setReloadSeed((s) => s + 1)}
-              className="inline-flex shrink-0 rounded-full bg-amber-400/15 px-5 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-amber-100 hover:bg-amber-400/20"
-            >
-              Retry
-            </button>
-          </div>
-          <p className="mt-3 text-xs leading-5 text-amber-100/70">
-            If you see “Network connectivity issue or CORS failure”, start the backend at{" "}
-            <span className="font-mono">http://127.0.0.1:8000</span> (FastAPI) and refresh.
-          </p>
-        </div>
-      ) : null}
-      <header className="clay-card rounded-[40px] p-8 md:p-10 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -mr-20 -mt-20" />
-        <div className="relative z-10 grid gap-10 lg:grid-cols-[1fr_0.8fr]">
-          <div className="space-y-6">
-            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-primary">Assessment Matrix</p>
-            <h1 className="text-4xl font-extrabold tracking-tight text-on-surface md:text-5xl leading-tight">
-              Curated for <span className="text-primary">{focusRole}</span>
-            </h1>
-            <p className="text-lg text-on-surface-variant max-w-xl leading-relaxed">
-              Explore subject-specific validation routes. Complete MCQ, situational, and written assessments to verify your expertise and bridge role-fit gaps.
+    <div className="mx-auto w-full max-w-[1320px] space-y-8 pb-12">
+      {error ? <div className="rounded-3xl bg-red-500/10 px-5 py-4 text-sm font-bold text-red-500">{error}</div> : null}
+
+      <section className="clay-card rounded-[36px] p-8 md:p-10">
+        <div className="grid gap-8 lg:grid-cols-[1fr_360px] lg:items-center">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-primary">CELTMap Assessment Engine</p>
+            <h1 className="mt-3 text-4xl font-black tracking-tight text-on-surface md:text-5xl">Subject-specific assessment practice</h1>
+            <p className="mt-4 max-w-3xl text-lg leading-8 text-on-surface-variant">
+              Pick the exact subject you want to improve. MCQ, situational, and written tracks now use the live subject bank directly, so progress stays pinpoint instead of broad.
             </p>
-            <div className="flex flex-wrap gap-4 pt-4">
-              <div className="rounded-3xl bg-surface-container-low px-6 py-4 ring-1 ring-outline-variant/5">
-                <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant mb-1">Total Subjects</p>
-                <p className="text-2xl font-bold text-on-surface">{isSubjectsLoading ? "--" : subjects.filter(s => s.isAvailable).length}</p>
-              </div>
-              <div className="rounded-3xl bg-surface-container-low px-6 py-4 ring-1 ring-outline-variant/5">
-                <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant mb-1">Active Tracks</p>
-                <p className="text-2xl font-bold text-on-surface">{isSubjectsLoading ? "--" : data.skillRequests.length}</p>
-              </div>
-              <div className="rounded-3xl bg-surface-container-low px-6 py-4 ring-1 ring-outline-variant/5">
-                 <p className="text-[9px] font-black uppercase tracking-widest text-on-surface-variant mb-1">Role Fit</p>
-                 <p className="text-2xl font-bold text-on-surface">{isCoreLoading ? "--" : formatPercent(data.roleFit?.fit_score ?? 0)}</p>
-              </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/assessments/quiz?mode=quick" className="rounded-full bg-primary px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white">
+                Start quick assessment
+              </Link>
+              <Link href="/assessments/quiz?mode=standard" className="rounded-full bg-surface-container-high px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-on-surface">
+                Standard
+              </Link>
+              <Link href="/assessments/quiz?mode=deep" className="rounded-full bg-surface-container-high px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-on-surface">
+                Deep
+              </Link>
             </div>
           </div>
-
-          <div className="rounded-[32px] bg-surface-container-lowest p-8 shadow-inner ring-1 ring-outline-variant/10">
-            <h2 className="text-xl font-bold text-on-surface mb-2">Request Custom Domain</h2>
-            <p className="text-sm text-on-surface-variant mb-6">
-              Check whether a subject already exists in the assessment bank. If it does, the track opens immediately. If not, you&apos;ll see that it is unavailable right now.
+          <div className="rounded-[32px] bg-surface-container-low p-7 text-center">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">Current readiness</p>
+            <p className="mt-4 text-5xl font-black text-primary sm:text-6xl">{Math.round(summary?.readiness_score ?? 0)}%</p>
+            <p className="mt-3 text-sm leading-6 text-on-surface-variant">
+              Resume analysis, objective assessments, written work, and credentials. New completed evidence updates this score immediately.
             </p>
-            <form onSubmit={createSkillRequest} className="space-y-4">
-              <input
-                value={requestForm.requestedName}
-                onChange={(e) => setRequestForm({...requestForm, requestedName: e.target.value})}
-                placeholder="Subject name (e.g. Distributed Systems)"
-                className="w-full rounded-2xl bg-surface-container-low px-5 py-3 text-sm outline-none ring-1 ring-outline-variant/20 focus:ring-primary/50 transition-all"
-              />
-              <textarea
-                value={requestForm.description}
-                onChange={(e) => setRequestForm({...requestForm, description: e.target.value})}
-                placeholder="Context or specific topics to cover..."
-                className="w-full rounded-2xl bg-surface-container-low px-5 py-3 text-sm outline-none ring-1 ring-outline-variant/20 focus:ring-primary/50 transition-all min-h-[80px]"
-              />
-              <button
-                type="submit"
-                disabled={isCreatingRequest}
-                className="w-full rounded-full bg-primary py-3 text-[11px] font-black uppercase tracking-widest text-white hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {isCreatingRequest ? "Checking..." : "Check Subject"}
-              </button>
-            </form>
-            {requestNotice ? (
-              <p className="mt-4 text-sm text-on-surface-variant">{requestNotice}</p>
-            ) : null}
           </div>
         </div>
-      </header>
+      </section>
 
-      <section className="space-y-6">
-        <div className="flex items-center justify-between px-2">
-          <h2 className="text-2xl font-bold tracking-tight text-on-surface">Subject Inventory</h2>
-          <div className="flex items-center gap-4 text-[11px] font-black uppercase tracking-widest text-on-surface-variant">
-            <span>Filter</span>
-            <span className="h-1 w-1 rounded-full bg-outline-variant" />
-            <span className="text-primary cursor-pointer hover:underline">All Subjects</span>
+      <section className="clay-card rounded-[32px] p-7">
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black tracking-tight text-on-surface">Assigned tests</h2>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              Department-scheduled assessments with fixed date, time, and duration.
+            </p>
           </div>
+          <span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-primary">
+            {assignments.length} scheduled
+          </span>
         </div>
-
-        {isSubjectsLoading ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 px-2">
-            {[1,2,3,4,5,6].map(i => <SubjectSkeleton key={i} />)}
-          </div>
-        ) : subjects.filter(s => s.isAvailable).length ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 px-2">
-            {subjects.filter(s => s.isAvailable).map((s) => (
-              <SubjectCard key={s.key} subject={s} />
-            ))}
+        {assignments.length ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {assignments.map((assignment) => {
+              const params = new URLSearchParams({
+                assignmentId: assignment.id,
+                title: assignment.title,
+                duration: String(assignment.duration_minutes),
+              });
+              const isCompleted = assignment.attempt_status === "completed";
+              const isTerminated = Boolean(assignment.terminated || assignment.status === "terminated");
+              const isMissed = Boolean(assignment.missed);
+              const assignmentHref = assignment.question_type === "DESCRIPTIVE"
+                ? `/assessments/written-protocol?${params.toString()}`
+                : `/assessments/quiz?${params.toString()}`;
+              const statusText = isCompleted
+                ? `Completed ${Math.round(assignment.attempt_score ?? 0)}%`
+                : isTerminated
+                  ? "Terminated"
+                  : isMissed
+                    ? "Not attended"
+                    : assignment.is_upcoming
+                      ? "Upcoming"
+                      : assignment.is_expired
+                        ? "Closed"
+                        : "Open now";
+              return (
+                <article key={assignment.id} className="rounded-[28px] border border-outline-variant/15 bg-surface-container-low p-5">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">
+                        {assignment.question_type} - {assignment.mode}
+                      </p>
+                      <h3 className="mt-2 text-xl font-black text-on-surface">{assignment.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+                        {assignment.category} - {formatDateTime(assignment.starts_at)} to {formatDateTime(assignment.ends_at)} - {assignment.duration_minutes} minutes
+                      </p>
+                      {assignment.question_count ? (
+                        <p className="mt-1 text-xs font-bold text-on-surface-variant">
+                          {assignment.question_count} fixed questions
+                        </p>
+                      ) : null}
+                      {assignment.instructions ? (
+                        <p className="mt-2 text-sm leading-6 text-on-surface-variant">{assignment.instructions}</p>
+                      ) : null}
+                    </div>
+                    <div className="text-left md:text-right">
+                      <p className={`text-xs font-bold ${
+                        isTerminated || isMissed ? "text-error" : "text-on-surface-variant"
+                      }`}>
+                        {statusText}
+                      </p>
+                      <Link
+                        href={assignmentHref}
+                        aria-disabled={(!assignment.can_start && !assignment.attempt_id) || (!isCompleted && (isTerminated || isMissed))}
+                        className={`mt-3 inline-flex rounded-full px-5 py-3 text-[10px] font-black uppercase tracking-[0.18em] transition ${
+                          (assignment.can_start || assignment.attempt_id) && (isCompleted || (!isTerminated && !isMissed))
+                            ? "bg-primary text-white hover:opacity-90"
+                            : "pointer-events-none bg-surface-container-high text-on-surface-variant opacity-60"
+                        }`}
+                      >
+                        {isCompleted ? "View result" : assignment.attempt_id ? "Resume" : "Begin test"}
+                      </Link>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         ) : (
-          <div className="mx-auto max-w-2xl py-12 px-6">
-            <div className="rounded-[48px] bg-surface-container-low border border-outline-variant/15 p-12 text-center shadow-sm">
-               <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-primary/5 text-primary">
-                  <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
-               </div>
-               <h2 className="text-3xl font-extrabold tracking-tight text-on-surface">Subject Vault Empty</h2>
-               <p className="mt-4 text-on-surface-variant text-lg leading-relaxed">
-                 You haven&apos;t defined any target skills yet or the current subjects are not fully populated. Select a focus role in your profile to generate your validation tracks.
-               </p>
-               <div className="mt-10 flex flex-wrap justify-center gap-4">
-                  <Link 
-                    href="/dashboard?refresh=1" 
-                    className="rounded-full bg-primary px-12 py-4 text-[12px] font-black uppercase tracking-widest text-white hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
-                  >
-                    Back to Dashboard
-                  </Link>
-               </div>
-            </div>
-          </div>
+          <p className="rounded-3xl bg-surface-container-low px-5 py-5 text-sm text-on-surface-variant">
+            No department tests have been assigned yet.
+          </p>
         )}
       </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {subjects.map((subject) => {
+          const subjectLink = `/assessments/${subject.key}`;
+          const canMcq = subject.availability?.mcq ?? subject.is_available;
+          const canSituational = subject.availability?.situational ?? false;
+          const canWritten = subject.availability?.written ?? false;
+          const linkSubject = {
+            title: subject.title,
+            skillId: subject.skill_id,
+            skillRequestId: subject.skill_request_id,
+          };
+
+          return (
+          <article key={subject.key} className="clay-card flex min-h-[21rem] flex-col rounded-[30px] p-6 transition hover:-translate-y-1 hover:border-primary/20">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <Link href={subjectLink} className="text-xl font-black tracking-tight text-on-surface transition hover:text-primary">
+                  {subject.title}
+                </Link>
+                <p className="mt-2 text-sm leading-6 text-on-surface-variant">{subject.description}</p>
+              </div>
+              <span className="rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black text-primary">
+                {subject.current_score == null ? "New" : `${Math.round(subject.current_score)}%`}
+              </span>
+            </div>
+            <div className="mt-5 h-2 rounded-full bg-surface-container-high">
+              <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.min(100, subject.current_score ?? 0)}%` }} />
+            </div>
+            <div className="mt-5 grid grid-cols-3 gap-2 text-center text-[10px] font-black uppercase tracking-[0.14em] text-on-surface-variant">
+              <span className="rounded-2xl bg-surface-container-low px-2 py-2">MCQ {subject.mcq_count ?? 0}</span>
+              <span className="rounded-2xl bg-surface-container-low px-2 py-2">SIT {subject.situational_count ?? 0}</span>
+              <span className="rounded-2xl bg-surface-container-low px-2 py-2">WR {subject.written_count ?? 0}</span>
+            </div>
+            {subject.is_available ? (
+              <div className="mt-auto grid gap-2 pt-5">
+                <Link
+                  href={buildAssessmentQuizHref(linkSubject, "MCQ")}
+                  aria-disabled={!canMcq}
+                  className={`rounded-2xl px-4 py-3 text-center text-[10px] font-black uppercase tracking-[0.18em] transition ${
+                    canMcq ? "bg-primary text-white hover:opacity-90" : "pointer-events-none bg-surface-container-high text-on-surface-variant opacity-50"
+                  }`}
+                >
+                  Attempt MCQ
+                </Link>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    href={buildAssessmentQuizHref(linkSubject, "SITUATIONAL")}
+                    aria-disabled={!canSituational}
+                    className={`rounded-2xl px-3 py-3 text-center text-[10px] font-black uppercase tracking-[0.14em] transition ${
+                      canSituational ? "bg-surface-container-high text-on-surface hover:bg-surface-container-highest" : "pointer-events-none bg-surface-container-high text-on-surface-variant opacity-50"
+                    }`}
+                  >
+                    Situational
+                  </Link>
+                  <Link
+                    href={buildWrittenAssessmentHref(linkSubject)}
+                    aria-disabled={!canWritten}
+                    className={`rounded-2xl px-3 py-3 text-center text-[10px] font-black uppercase tracking-[0.14em] transition ${
+                      canWritten ? "bg-surface-container-high text-on-surface hover:bg-surface-container-highest" : "pointer-events-none bg-surface-container-high text-on-surface-variant opacity-50"
+                    }`}
+                  >
+                    Written
+                  </Link>
+                </div>
+                <Link href={subjectLink} className="text-center text-[10px] font-black uppercase tracking-[0.18em] text-primary">
+                  View subject details
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-auto rounded-3xl border border-dashed border-outline-variant/20 bg-surface-container-low px-4 py-4 text-sm font-semibold text-on-surface-variant">
+                Subject not available at the moment.
+              </div>
+            )}
+          </article>
+        )})}
+      </section>
+
+      <Motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="clay-card rounded-[32px] p-7"
+      >
+        <h2 className="text-2xl font-black tracking-tight text-on-surface">Recent attempts</h2>
+        <div className="mt-5 space-y-4">
+          {logs.length ? logs.map((entry) => (
+            <AssessmentLogCard key={entry.id} log={entry} />
+          )) : (
+            <p className="rounded-3xl bg-surface-container-low px-5 py-5 text-sm text-on-surface-variant">
+              No assessment attempt yet.
+            </p>
+          )}
+        </div>
+      </Motion.section>
+    </div>
+  );
+}
+
+function AssessmentLogCard({ log }: { log: AssessmentLogEntry }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="rounded-3xl border border-outline-variant/20 bg-surface shadow-sm transition hover:shadow-md overflow-hidden">
+      <div
+        className="p-5 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface-container-lowest transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
+              {log.type}
+            </span>
+            <span className="text-xs font-bold text-on-surface-variant">
+              {log.completed_at ? new Date(log.completed_at).toLocaleDateString() : "Pending"}
+            </span>
+          </div>
+          <h3 className="mt-3 text-lg font-black text-on-surface capitalize">{log.subject.replace(/_/g, " ")}</h3>
+          <p className="mt-1 text-sm text-on-surface-variant line-clamp-2">{log.insight}</p>
+        </div>
+        <div className="flex items-center gap-6">
+          <div className="flex-shrink-0 text-right sm:text-center">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full border-[4px] border-emerald-500/30">
+              <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{Math.round(log.score ?? 0)}</span>
+            </div>
+            <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Score</div>
+          </div>
+          <AppIcon name="expand_more" className={`h-5 w-5 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {expanded && (
+          <Motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="border-t border-outline-variant/15 bg-surface-container-lowest"
+          >
+            <div className="p-6 grid gap-6 md:grid-cols-2">
+              <div className="space-y-4">
+                {log.analytics && typeof log.analytics.total === "number" && log.analytics.total > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-2xl bg-emerald-500/10 p-3 text-center">
+                      <span className="block text-2xl font-black text-emerald-600">{log.analytics.correct ?? 0}</span>
+                      <span className="text-[10px] uppercase tracking-wider text-emerald-600/70 font-bold">Correct</span>
+                    </div>
+                    <div className="rounded-2xl bg-red-500/10 p-3 text-center">
+                      <span className="block text-2xl font-black text-red-500">{log.analytics.wrong ?? 0}</span>
+                      <span className="text-[10px] uppercase tracking-wider text-red-500/70 font-bold">Wrong</span>
+                    </div>
+                    <div className="rounded-2xl bg-surface-container-high p-3 text-center">
+                      <span className="block text-2xl font-black text-on-surface">{log.analytics.total ?? 0}</span>
+                      <span className="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Total</span>
+                    </div>
+                  </div>
+                )}
+
+                {log.areas_of_betterment && log.areas_of_betterment.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-red-400 mb-2">Areas for Betterment</h4>
+                    <ul className="space-y-1">
+                      {log.areas_of_betterment.map((area, i) => (
+                        <li key={i} className="text-sm flex items-start gap-2 text-on-surface-variant">
+                          <AppIcon name="warning" className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                          {area}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                {log.hidden_skills && log.hidden_skills.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-widest text-primary mb-3">Hidden Skills Unlocked</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {log.hidden_skills.map((skill, i) => (
+                        <span key={i} className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-3 py-1.5 text-xs font-bold text-primary">
+                          <AppIcon name="psychology" className="h-3.5 w-3.5" />
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

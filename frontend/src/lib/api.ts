@@ -2,10 +2,17 @@
 
 import type { Session } from "@supabase/supabase-js";
 
-import { supabase } from "./supabase";
+import { clearSupabaseAuthStorage, isInvalidRefreshTokenError, supabase } from "./supabase";
 
-const defaultApiBaseUrl = "http://localhost:8000/api/v1";
-const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || defaultApiBaseUrl).replace(/\/$/, "");
+const envApiUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+const isEnvInvalid = !envApiUrl || envApiUrl === 'undefined' || envApiUrl === 'null' || envApiUrl.trim() === '';
+
+if (isEnvInvalid) {
+  throw new Error("NEXT_PUBLIC_API_BASE_URL must be configured for the hosted CELTM frontend.");
+}
+
+export const apiBaseUrl = envApiUrl.replace(/\/$/, "");
+
 const defaultCacheTtlMs = 300_000;
 const cacheNamespace = "celtm-api-cache:";
 
@@ -13,7 +20,7 @@ type ApiFetchOptions = RequestInit & {
   cacheTtlMs?: number;
   skipCache?: boolean;
   revalidate?: boolean;
-  onCacheHit?: (data: any) => void;
+  onCacheHit?: (data: unknown) => void;
 };
 
 interface CachedResponseEntry {
@@ -67,6 +74,17 @@ const clonePayload = <T>(payload: T): T => {
   return JSON.parse(JSON.stringify(payload)) as T;
 };
 
+const clearInvalidAuthState = async () => {
+  activeSessionSnapshot = null;
+  clearCachedResponses();
+  clearSupabaseAuthStorage();
+  try {
+    await supabase.auth.signOut({ scope: "local" });
+  } catch {
+    // The refresh token is already invalid; local storage has been cleared.
+  }
+};
+
 const refreshActiveSession = async (): Promise<Session | null> => {
   if (refreshPromise) {
     return refreshPromise;
@@ -80,7 +98,10 @@ const refreshActiveSession = async (): Promise<Session | null> => {
       } = await supabase.auth.refreshSession();
 
       if (error) {
-        console.warn("[api-fetch] Session refresh failed, clearing snapshot:", error.message);
+        if (isInvalidRefreshTokenError(error)) {
+          await clearInvalidAuthState();
+          return null;
+        }
         activeSessionSnapshot = null;
         return null;
       }
@@ -88,7 +109,10 @@ const refreshActiveSession = async (): Promise<Session | null> => {
       activeSessionSnapshot = refreshedSession;
       return refreshedSession;
     } catch (err) {
-      console.error("[api-fetch] Unexpected error during session refresh:", err);
+      if (isInvalidRefreshTokenError(err)) {
+        await clearInvalidAuthState();
+        return null;
+      }
       activeSessionSnapshot = null;
       return null;
     } finally {
@@ -104,11 +128,30 @@ const buildHeaders = async (headers?: HeadersInit) => {
   let session = activeSessionSnapshot;
 
   if (session === undefined) {
-    const {
-      data: { session: liveSession },
-    } = await supabase.auth.getSession();
-    activeSessionSnapshot = liveSession;
-    session = liveSession;
+    try {
+      const {
+        data: { session: liveSession },
+        error,
+      } = await supabase.auth.getSession();
+      if (error) {
+        if (isInvalidRefreshTokenError(error)) {
+          await clearInvalidAuthState();
+        } else {
+          activeSessionSnapshot = null;
+        }
+        session = null;
+      } else {
+        activeSessionSnapshot = liveSession;
+        session = liveSession;
+      }
+    } catch (err) {
+      if (isInvalidRefreshTokenError(err)) {
+        await clearInvalidAuthState();
+      } else {
+        activeSessionSnapshot = null;
+      }
+      session = null;
+    }
   }
 
   // Pre-emptive refresh if session is about to expire
@@ -130,6 +173,15 @@ const buildHeaders = async (headers?: HeadersInit) => {
 const canCacheRequest = (init: ApiFetchOptions) => {
   const method = (init.method || "GET").toUpperCase();
   return method === "GET" && !init.body && !init.skipCache && init.cache !== "no-store";
+};
+
+const isAbortLikeError = (error: unknown) => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const name = "name" in error ? String((error as { name?: unknown }).name) : "";
+  return name === "AbortError" || name === "TimeoutError";
 };
 
 const clearCachedResponses = () => {
@@ -240,6 +292,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchOptions = {}): Pro
     ? `${identityKey}:${(init.method || "GET").toUpperCase()}:${requestUrl}`
     : null;
   const cacheTtlMs = init.cacheTtlMs ?? defaultCacheTtlMs;
+  const canShareInflightRequest = cacheKey && !init.signal;
 
   if (cacheKey && !init.revalidate) {
     const cachedEntry = getCachedEntry(cacheKey);
@@ -247,9 +300,11 @@ export async function apiFetch<T>(path: string, init: ApiFetchOptions = {}): Pro
       return clonePayload(cachedEntry.payload as T);
     }
 
-    const inflightRequest = inflightRequests.get(cacheKey);
-    if (inflightRequest) {
-      return clonePayload((await inflightRequest) as T);
+    if (canShareInflightRequest) {
+      const inflightRequest = inflightRequests.get(cacheKey);
+      if (inflightRequest) {
+        return clonePayload((await inflightRequest) as T);
+      }
     }
   }
 
@@ -264,10 +319,13 @@ export async function apiFetch<T>(path: string, init: ApiFetchOptions = {}): Pro
     try {
       response = await executeRequest(headers);
     } catch (err) {
+      if (isAbortLikeError(err)) {
+        throw err;
+      }
       console.error(`[api-fetch] Network failure for ${requestUrl}:`, err);
       if (err instanceof TypeError && err.message === "Failed to fetch") {
         throw new Error(
-          `Network connectivity issue or CORS failure when calling ${normalizedPath}. Please check if the backend is running at ${apiBaseUrl}.`,
+          `Backend API is not reachable for ${normalizedPath}. Verify NEXT_PUBLIC_API_BASE_URL and hosted CORS configuration for ${apiBaseUrl}.`,
         );
       }
       throw err;
@@ -287,6 +345,9 @@ export async function apiFetch<T>(path: string, init: ApiFetchOptions = {}): Pro
         try {
           response = await executeRequest(retryHeaders);
         } catch (retryErr) {
+          if (isAbortLikeError(retryErr)) {
+            throw retryErr;
+          }
           console.error(`[api-fetch] Network failure on retry for ${requestUrl}:`, retryErr);
           throw retryErr;
         }
@@ -294,7 +355,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchOptions = {}): Pro
     }
 
     const contentType = response.headers.get("content-type") || "";
-    let payload: any;
+    let payload: unknown;
     try {
       payload = contentType.includes("application/json")
         ? await response.json()
@@ -332,7 +393,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchOptions = {}): Pro
     return payload as T;
   })();
 
-  if (cacheKey) {
+  if (canShareInflightRequest) {
     inflightRequests.set(cacheKey, requestPromise);
   }
 
@@ -340,7 +401,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchOptions = {}): Pro
     const payload = await requestPromise;
     return clonePayload(payload);
   } finally {
-    if (cacheKey) {
+    if (canShareInflightRequest) {
       inflightRequests.delete(cacheKey);
     }
   }
@@ -383,5 +444,3 @@ export async function apiFetchBlob(path: string, init: RequestInit = {}): Promis
 
   return response.blob();
 }
-
-export { apiBaseUrl };

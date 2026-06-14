@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import CeltmLogo from "@/components/CeltmLogo";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiFetch, ApiError } from "@/lib/api";
 
@@ -206,7 +205,7 @@ export default function AssessmentPage() {
       // Crucial: wait for profile to be fully synced with new completion flags
       await refreshProfile();
       setPhase("done");
-    } catch (err: any) {
+    } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
         setError("You recently completed this assessment. Please wait 2 hours before your next attempt.");
       } else {
@@ -222,11 +221,6 @@ export default function AssessmentPage() {
   // -------------------------------------------------------------------------
   const currentQuestion = questions[currentIndex];
   const domainStyle = currentQuestion ? getDomainStyle(currentQuestion.category) : null;
-  const progressFraction =
-    phase === "done" || phase === "submitting"
-      ? questions.length
-      : currentIndex;
-
   // =========================================================================
   // LOADING / AUTH STATE
   // =========================================================================
