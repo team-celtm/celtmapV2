@@ -127,6 +127,11 @@ export interface SkillRead {
   interview_score?: number | null;
   artifact_score?: number | null;
   updated_at?: string | null;
+  source?: string | null;
+  attempt_count?: number | null;
+  evidence_count?: number | null;
+  last_attempt_type?: string | null;
+  evidence_label?: string | null;
 }
 
 export interface SkillGapRead {

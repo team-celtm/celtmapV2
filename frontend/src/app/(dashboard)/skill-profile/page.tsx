@@ -86,6 +86,15 @@ function InitialBadge({ label }: { label: string }) {
   );
 }
 
+function skillSourceLabel(skill: SkillRead) {
+  const source = String(skill.source || "");
+  if (source.includes("written_practice")) return "Written practice";
+  if (source.includes("assessment_discovery")) return "Assessment discovery";
+  if (source.includes("assessment_practice")) return "Assessment practice";
+  if (source.includes("readiness_dimension")) return "Readiness dimension";
+  return "Verified evidence";
+}
+
 export default function SkillProfilePage() {
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [data, setData] = useState<SkillProfileState>(initialState);
@@ -177,6 +186,20 @@ export default function SkillProfilePage() {
 
   const topSkills = useMemo(
     () => [...data.skills].sort((left, right) => right.verified_score - left.verified_score),
+    [data.skills],
+  );
+  const practiceSkills = useMemo(
+    () =>
+      data.skills
+        .filter((skill) => {
+          const source = String(skill.source || "");
+          return source.includes("assessment_practice") || source.includes("assessment_discovery") || source.includes("written_practice");
+        })
+        .sort((left, right) => {
+          const rightTime = right.updated_at ? new Date(right.updated_at).getTime() : 0;
+          const leftTime = left.updated_at ? new Date(left.updated_at).getTime() : 0;
+          return rightTime - leftTime || right.verified_score - left.verified_score;
+        }),
     [data.skills],
   );
   const criticalGaps = useMemo(
@@ -398,6 +421,60 @@ export default function SkillProfilePage() {
                 />
               )}
             </div>
+
+            {practiceSkills.length ? (
+              <div className="clay-card rounded-[32px] p-8">
+                <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold tracking-tight text-on-surface">
+                      Practice-discovered skills
+                    </h2>
+                    <p className="mt-1 text-sm text-on-surface-variant">
+                      Skills found from completed assessments and written practice, similar to topic tags after a practice session.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-secondary/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-secondary">
+                    {practiceSkills.length} found
+                  </span>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  {practiceSkills.slice(0, 8).map((skill) => (
+                    <button
+                      key={skill.skill_id}
+                      type="button"
+                      onClick={() => setSelectedSkillId(skill.skill_id)}
+                      className={`lift-tile rounded-3xl border px-5 py-5 text-left transition ${
+                        selectedSkillId === skill.skill_id
+                          ? "border-secondary/40 bg-secondary/10"
+                          : "border-outline-variant/12 dark:border-transparent bg-surface-container-low hover:border-secondary/30"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-secondary">
+                            {skillSourceLabel(skill)}
+                          </p>
+                          <h3 className="mt-2 text-lg font-bold text-on-surface">{skill.skill_name}</h3>
+                          <p className="mt-2 text-xs font-semibold leading-5 text-on-surface-variant">
+                            {skill.evidence_label || "Completed practice"} - {Math.max(1, Number(skill.attempt_count || 1))} signal
+                          </p>
+                        </div>
+                        <span className="rounded-2xl bg-surface px-3 py-2 text-lg font-extrabold tracking-tight text-on-surface shadow-inner">
+                          {formatPercent(skill.verified_score)}
+                        </span>
+                      </div>
+                      <div className="mt-4 h-2 overflow-hidden rounded-full bg-outline-variant/15">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-secondary to-primary"
+                          style={{ width: `${Math.max(0, Math.min(100, Math.round(skill.verified_score)))}%` }}
+                        />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div className="clay-card rounded-[32px] p-8">
               <div className="mb-6">

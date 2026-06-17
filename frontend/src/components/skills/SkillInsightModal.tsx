@@ -13,12 +13,20 @@ export function SkillInsightModal({ skill, onClose }: SkillInsightModalProps) {
     return null;
   }
 
+  const sourceLabel = String(skill.source || "verified evidence")
+    .split("+")
+    .map((part) => part.trim().replace(/_/g, " "))
+    .filter(Boolean)
+    .join(" + ");
   const rows = [
     { label: "Verified score", value: formatPercent(skill.verified_score) },
     { label: "Assessment score", value: formatPercent(skill.assessment_score) },
     { label: "Written score", value: formatPercent(skill.written_score) },
     { label: "Interview score", value: formatPercent(skill.interview_score) },
     { label: "Artifact score", value: formatPercent(skill.artifact_score) },
+    { label: "Evidence source", value: sourceLabel },
+    { label: "Practice signals", value: String(skill.evidence_count ?? skill.attempt_count ?? 0) },
+    { label: "Latest evidence", value: skill.evidence_label || skill.last_attempt_type || "Not available" },
   ];
 
   return (

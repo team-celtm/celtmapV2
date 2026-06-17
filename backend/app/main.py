@@ -1489,6 +1489,263 @@ DIMENSION_SKILL_SUGGESTIONS: dict[str, list[str]] = {
 }
 
 
+GENERIC_ASSESSMENT_SKILL_NAMES = {
+    "assessment",
+    "capability profile",
+    "capability-profile",
+    "capability",
+    "written",
+    "practice",
+    "general",
+}
+
+SKILL_LABEL_ACRONYMS = {
+    "ai": "AI",
+    "api": "API",
+    "ca": "CA",
+    "css": "CSS",
+    "dbms": "DBMS",
+    "html": "HTML",
+    "js": "JS",
+    "llm": "LLM",
+    "ml": "ML",
+    "nlp": "NLP",
+    "rag": "RAG",
+    "sql": "SQL",
+    "ui": "UI",
+    "ux": "UX",
+}
+
+
+def _skill_label(value: Any, fallback: str | None = None) -> str | None:
+    raw = str(value or "").strip()
+    if not raw and fallback:
+        raw = fallback
+    raw = re.sub(r"[_-]+", " ", raw).strip()
+    raw = re.sub(r"^(applied|verified|practice)\s+", "", raw, flags=re.IGNORECASE).strip()
+    if not raw or raw.lower() in GENERIC_ASSESSMENT_SKILL_NAMES:
+        return None
+
+    words = re.findall(r"[A-Za-z0-9+.#]+", raw)
+    if not words:
+        return None
+    label = " ".join(SKILL_LABEL_ACRONYMS.get(word.lower(), word.capitalize()) for word in words)
+    return label[:80]
+
+
+def _empty_skill_bucket(label: str) -> dict[str, Any]:
+    return {
+        "skill_id": normalize_key(label),
+        "skill_name": label,
+        "scores": [],
+        "assessment_scores": [],
+        "written_scores": [],
+        "interview_scores": [],
+        "artifact_scores": [],
+        "sources": set(),
+        "attempt_count": 0,
+        "evidence_count": 0,
+        "updated_at": None,
+        "last_attempt_type": None,
+        "evidence_label": None,
+    }
+
+
+def _newer_iso(left: str | None, right: str | None) -> str | None:
+    if not left:
+        return right
+    if not right:
+        return left
+    return max(left, right)
+
+
+def _add_skill_signal(
+    buckets: dict[str, dict[str, Any]],
+    name: Any,
+    score: Any,
+    *,
+    source: str,
+    updated_at: str | None,
+    score_kind: str = "assessment",
+    attempt_type: str | None = None,
+    evidence_label: str | None = None,
+) -> None:
+    label = _skill_label(name)
+    if not label:
+        return
+    skill_id = normalize_key(label)
+    bucket = buckets.setdefault(skill_id, _empty_skill_bucket(label))
+    bounded = _bounded_score(score)
+    bucket["scores"].append(bounded)
+    if score_kind == "written":
+        bucket["written_scores"].append(bounded)
+    elif score_kind == "interview":
+        bucket["interview_scores"].append(bounded)
+    elif score_kind == "artifact":
+        bucket["artifact_scores"].append(bounded)
+    else:
+        bucket["assessment_scores"].append(bounded)
+    bucket["sources"].add(source)
+    bucket["attempt_count"] += 1
+    bucket["evidence_count"] += 1
+    if _newer_iso(bucket["updated_at"], updated_at) == updated_at:
+        bucket["updated_at"] = updated_at
+        bucket["last_attempt_type"] = attempt_type or source
+        bucket["evidence_label"] = evidence_label
+
+
+def _assessment_practice_skill_rows(user_id: str) -> list[dict[str, Any]]:
+    buckets: dict[str, dict[str, Any]] = {}
+    assessment_rows = db.query_all(
+        """
+        SELECT * FROM assessments
+        WHERE user_id = ? AND status = 'completed' AND score IS NOT NULL
+        ORDER BY COALESCE(completed_at, created_at) DESC
+        """,
+        (user_id,),
+    )
+    for row in assessment_rows:
+        score = _bounded_score(row.get("score"))
+        updated_at = row.get("completed_at") or row.get("created_at")
+        attempt_type = _assessment_attempt_type(row)
+        category_label = _subject_title(str(row.get("category") or ""))
+        _add_skill_signal(
+            buckets,
+            category_label,
+            score,
+            source="assessment_practice",
+            updated_at=updated_at,
+            score_kind="assessment",
+            attempt_type=attempt_type,
+            evidence_label=f"{attempt_type.title()} assessment",
+        )
+
+        metadata = from_json(row.get("metadata") or "{}", {})
+        target_dimensions = metadata.get("target_dimensions")
+        if isinstance(target_dimensions, list):
+            for dimension in target_dimensions:
+                _add_skill_signal(
+                    buckets,
+                    dimension,
+                    score,
+                    source="assessment_practice",
+                    updated_at=updated_at,
+                    score_kind="assessment",
+                    attempt_type=attempt_type,
+                    evidence_label=category_label,
+                )
+
+        capability_profile = from_json(row.get("capability_profile"), {})
+        if isinstance(capability_profile, dict):
+            for skill_name, skill_score in capability_profile.items():
+                _add_skill_signal(
+                    buckets,
+                    skill_name,
+                    skill_score,
+                    source="assessment_practice",
+                    updated_at=updated_at,
+                    score_kind="assessment",
+                    attempt_type=attempt_type,
+                    evidence_label=category_label,
+                )
+
+        inference = metadata.get("inference") if isinstance(metadata.get("inference"), dict) else {}
+        for skill_name in list(inference.get("hidden_skills") or [])[:5]:
+            _add_skill_signal(
+                buckets,
+                skill_name,
+                score,
+                source="assessment_discovery",
+                updated_at=updated_at,
+                score_kind="assessment",
+                attempt_type=attempt_type,
+                evidence_label=category_label,
+            )
+
+    written_rows = db.query_all(
+        """
+        SELECT * FROM written_assessments
+        WHERE user_id = ? AND status = 'completed' AND score IS NOT NULL
+        ORDER BY updated_at DESC
+        """,
+        (user_id,),
+    )
+    for row in written_rows:
+        metadata = from_json(row.get("metadata") or "{}", {})
+        score = _bounded_score(row.get("score"))
+        updated_at = row.get("updated_at") or row.get("created_at")
+        label = metadata.get("dimension") or metadata.get("subject") or row.get("skill_id") or "Written reasoning"
+        _add_skill_signal(
+            buckets,
+            label,
+            score,
+            source="written_practice",
+            updated_at=updated_at,
+            score_kind="written",
+            attempt_type="written",
+            evidence_label="Written assessment",
+        )
+        for skill_name in list(metadata.get("insights") or [])[:3]:
+            _add_skill_signal(
+                buckets,
+                skill_name,
+                score,
+                source="written_practice",
+                updated_at=updated_at,
+                score_kind="written",
+                attempt_type="written",
+                evidence_label=str(label),
+            )
+
+    rows: list[dict[str, Any]] = []
+    for bucket in buckets.values():
+        rows.append(
+            {
+                "skill_id": bucket["skill_id"],
+                "skill_name": bucket["skill_name"],
+                "verified_score": _mean_score(bucket["scores"]),
+                "assessment_score": _mean_score(bucket["assessment_scores"]) if bucket["assessment_scores"] else None,
+                "written_score": _mean_score(bucket["written_scores"]) if bucket["written_scores"] else None,
+                "interview_score": _mean_score(bucket["interview_scores"]) if bucket["interview_scores"] else None,
+                "artifact_score": _mean_score(bucket["artifact_scores"]) if bucket["artifact_scores"] else None,
+                "updated_at": bucket["updated_at"],
+                "source": " + ".join(sorted(bucket["sources"])),
+                "attempt_count": bucket["attempt_count"],
+                "evidence_count": bucket["evidence_count"],
+                "last_attempt_type": bucket["last_attempt_type"],
+                "evidence_label": bucket["evidence_label"],
+            }
+        )
+    return rows
+
+
+def _merge_skill_rows(base_rows: list[dict[str, Any]], derived_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged = {row["skill_id"]: {**row, "source": row.get("source") or "readiness_dimension"} for row in base_rows}
+    for row in derived_rows:
+        existing = merged.get(row["skill_id"])
+        if not existing:
+            merged[row["skill_id"]] = row
+            continue
+        existing["verified_score"] = max(float(existing.get("verified_score") or 0), float(row.get("verified_score") or 0))
+        for field in ("assessment_score", "written_score", "interview_score", "artifact_score"):
+            values = [
+                value
+                for value in (existing.get(field), row.get(field))
+                if isinstance(value, (int, float))
+            ]
+            if values:
+                existing[field] = round(max(float(value) for value in values), 2)
+        existing["updated_at"] = _newer_iso(existing.get("updated_at"), row.get("updated_at"))
+        existing["source"] = " + ".join(
+            sorted({part.strip() for part in f"{existing.get('source', '')} + {row.get('source', '')}".split("+") if part.strip()})
+        )
+        existing["attempt_count"] = int(existing.get("attempt_count") or 0) + int(row.get("attempt_count") or 0)
+        existing["evidence_count"] = int(existing.get("evidence_count") or 0) + int(row.get("evidence_count") or 0)
+        existing["last_attempt_type"] = row.get("last_attempt_type") or existing.get("last_attempt_type")
+        existing["evidence_label"] = row.get("evidence_label") or existing.get("evidence_label")
+    return list(merged.values())
+
+
 def adjacent_fits_for_role(role_fit_score: dict[str, Any], desired_role: str | None = None) -> list[str]:
     role_key = str(role_fit_score.get("role_profile_key") or "custom")
     return career_roles.adjacent_fits_for_role(desired_role, role_key)
@@ -1719,7 +1976,7 @@ def skill_rows(user_id: str) -> list[dict[str, Any]]:
     breakdown.update(snapshot["domain_breakdown"] or {})
     written_score = snapshot["written_assessment"]["score"] if snapshot["written_assessment"] else None
     certificate_breakdown = (snapshot["certificate"] or {}).get("domain_breakdown", {}) if snapshot.get("certificate") else {}
-    return [
+    base_rows = [
         {
             "skill_id": normalize_key(name),
             "skill_name": name,
@@ -1744,6 +2001,7 @@ def skill_rows(user_id: str) -> list[dict[str, Any]]:
         }
         for name, score in breakdown.items()
     ]
+    return _merge_skill_rows(base_rows, _assessment_practice_skill_rows(user_id))
 
 
 def gap_rows(user_id: str) -> list[dict[str, Any]]:
